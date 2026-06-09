@@ -115,7 +115,7 @@ export function OnboardingFlow() {
   /* ─────────────────────────────── Intro ────────────────────────────── */
   if (index === 0) {
     return (
-      <Shell topRef={topRef}>
+      <Shell topRef={topRef} wide>
         <header className="mb-7 text-center">
           <h1 className="font-display text-3xl font-medium text-ink sm:text-4xl">
             What should your mornings focus on?
@@ -203,14 +203,22 @@ export function OnboardingFlow() {
 function Shell({
   children,
   topRef,
+  wide = false,
 }: {
   children: React.ReactNode;
   topRef: React.RefObject<HTMLDivElement | null>;
+  /** Intro uses a roomier container so the category cards aren't cramped. */
+  wide?: boolean;
 }) {
   return (
     <div className="min-h-dvh bg-background">
       <div ref={topRef} className="scroll-mt-6" />
-      <div className="mx-auto flex min-h-dvh max-w-xl flex-col px-5 py-6 sm:py-10">
+      <div
+        className={cn(
+          "mx-auto flex min-h-dvh flex-col px-5 py-6 sm:py-10",
+          wide ? "max-w-3xl" : "max-w-xl",
+        )}
+      >
         <TopChrome />
         <div className="flex flex-1 flex-col justify-center py-8">{children}</div>
       </div>

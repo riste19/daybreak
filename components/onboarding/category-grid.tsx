@@ -14,7 +14,7 @@ interface CategoryGridProps {
 /** The intro grid of life-area cards. Tap to select/deselect — pick as few as one. */
 export function CategoryGrid({ selected, onToggle }: CategoryGridProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 ">
       {categories.map((cat) => {
         const Icon = iconMap[cat.icon];
         const isSelected = selected.includes(cat.id);
