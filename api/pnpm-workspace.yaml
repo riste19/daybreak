@@ -1,0 +1,8 @@
+# pnpm 11 blocks dependency build scripts by default. These three are trusted and
+# approved to run on install (esbuild needs its platform binary; the others are
+# standard deps of @google/genai). Without this, `pnpm install` prints an
+# ERR_PNPM_IGNORED_BUILDS notice.
+allowBuilds:
+  '@google/genai': true
+  esbuild: true
+  protobufjs: true
