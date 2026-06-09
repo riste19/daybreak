@@ -9,20 +9,25 @@ import { iconMap } from "./icon-map";
 interface CategoryGridProps {
   selected: string[];
   onToggle: (id: string) => void;
+  /** Maximum categories selectable; remaining cards disable once reached. */
+  max?: number;
 }
 
 /** The intro grid of life-area cards. Tap to select/deselect — pick as few as one. */
-export function CategoryGrid({ selected, onToggle }: CategoryGridProps) {
+export function CategoryGrid({ selected, onToggle, max }: CategoryGridProps) {
+  const atCap = max != null && selected.length >= max;
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 ">
       {categories.map((cat) => {
         const Icon = iconMap[cat.icon];
         const isSelected = selected.includes(cat.id);
+        const disabled = atCap && !isSelected;
         return (
           <button
             key={cat.id}
             type="button"
             aria-pressed={isSelected}
+            disabled={disabled}
             onClick={() => onToggle(cat.id)}
             className={cn(
               "group relative flex items-start gap-4 rounded-2xl border p-4 text-left transition-all",
@@ -30,6 +35,7 @@ export function CategoryGrid({ selected, onToggle }: CategoryGridProps) {
               isSelected
                 ? "border-primary bg-secondary shadow-sm"
                 : "border-border bg-card hover:border-primary/40 hover:bg-secondary/50",
+              disabled && "cursor-not-allowed opacity-45 hover:border-border hover:bg-card",
             )}
           >
             <span

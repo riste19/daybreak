@@ -17,6 +17,9 @@ import { ProgressDots } from "./progress-dots";
 
 type Values = Record<string, AnswerValue>;
 
+/** Keep the start light: pick up to this many focus areas. */
+const MAX_CATEGORIES = 3;
+
 /**
  * The whole onboarding flow. Renders entirely from the schema:
  *   intro (pick categories) → one calm screen per chosen category → universal → done.
@@ -35,11 +38,11 @@ export function OnboardingFlow() {
 
   // Keep selected categories in schema order so steps + dots are predictable.
   const toggleCategory = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : categories.filter((c) => prev.includes(c.id) || c.id === id).map((c) => c.id),
-    );
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_CATEGORIES) return prev; // at cap — ignore.
+      return categories.filter((c) => prev.includes(c.id) || c.id === id).map((c) => c.id);
+    });
   };
 
   const setAnswer = (questionId: string, value: AnswerValue | undefined) => {
@@ -121,15 +124,21 @@ export function OnboardingFlow() {
             What should your mornings focus on?
           </h1>
           <p className="mx-auto mt-3 max-w-md text-ink-soft">
-            Pick what you want {site.name} to focus on. Choose as many or as few
-            as you like — even one is plenty.
+            Pick what you want {site.name} to focus on — up to {MAX_CATEGORIES}.
+            Even one is plenty.
           </p>
         </header>
 
-        <CategoryGrid selected={selected} onToggle={toggleCategory} />
+        <CategoryGrid
+          selected={selected}
+          onToggle={toggleCategory}
+          max={MAX_CATEGORIES}
+        />
 
         <p className="mt-5 text-center text-sm text-ink-soft">
-          You can change this anytime.
+          {selected.length >= MAX_CATEGORIES
+            ? `That's ${MAX_CATEGORIES} — a lovely place to start. You can change this anytime.`
+            : "You can change this anytime."}
         </p>
 
         <div className="mt-8 flex items-center justify-center">

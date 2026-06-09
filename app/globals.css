@@ -88,6 +88,21 @@
     scroll-behavior: smooth;
   }
 
+  /* Tailwind v4's preflight resets buttons to the default cursor — restore the
+     pointer for every interactive control (buttons, role=button, links).
+     Disabled controls keep the not-allowed cursor. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
