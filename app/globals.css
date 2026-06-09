@@ -1,26 +1,125 @@
 @import "tailwindcss";
 
+/* =============================================================
+   Daybreak — "first light" design tokens
+   Warm dawn palette: deep pre-dawn night warming to a cream day.
+   ============================================================= */
+
+@theme {
+  /* Brand fonts (bound to next/font CSS variables in layout.tsx) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Dawn palette */
+  --color-night: #15122b; /* deep pre-dawn sky */
+  --color-twilight: #241b40; /* lifting dark */
+  --color-horizon: #3a2a4d; /* where night meets glow */
+  --color-amber: #f5a623; /* core warm accent */
+  --color-amber-soft: #f8c06b;
+  --color-peach: #ffb38a;
+  --color-gold: #ffd27a;
+  --color-cream: #fdf8f1; /* daylight page base */
+  --color-cream-deep: #f6ecdd;
+  --color-ink: #2a2118; /* warm near-black text */
+  --color-ink-soft: #6f6353; /* warm muted text */
+}
+
+/* shadcn/ui semantic tokens, themed to the cream/dawn world */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.75rem;
+
+  --background: #fdf8f1;
+  --foreground: #2a2118;
+
+  --card: #ffffff;
+  --card-foreground: #2a2118;
+
+  --primary: #b6651a; /* warm amber-brown — accessible on cream */
+  --primary-foreground: #fff7ec;
+
+  --secondary: #f6ecdd;
+  --secondary-foreground: #2a2118;
+
+  --muted: #f3e9da;
+  --muted-foreground: #6f6353;
+
+  --accent: #f6ecdd;
+  --accent-foreground: #2a2118;
+
+  --destructive: #b3261e;
+  --destructive-foreground: #fff7ec;
+
+  --border: #e7dac6;
+  --input: #e7dac6;
+  --ring: #d98a2b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Calm by design: honour users who prefer no motion. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* The rising-sun glow used behind the hero and final CTA. */
+@utility dawn-glow {
+  background:
+    radial-gradient(
+      120% 80% at 50% 118%,
+      rgba(255, 210, 122, 0.42) 0%,
+      rgba(255, 179, 138, 0.22) 32%,
+      rgba(245, 166, 35, 0.05) 55%,
+      transparent 72%
+    ),
+    linear-gradient(180deg, var(--color-night) 0%, var(--color-twilight) 60%, var(--color-horizon) 100%);
 }
