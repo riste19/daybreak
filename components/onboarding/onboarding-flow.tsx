@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { site } from "@/lib/config";
 import { categories } from "@/lib/onboarding/onboarding-schema";
 import { resolveAnswers, type AnswerValue, type ResolvedAnswers } from "@/lib/onboarding/resolveAnswers";
+import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
@@ -59,7 +60,16 @@ export function OnboardingFlow() {
   // index → which screen. 0 = intro, then categories, then universal.
   const universalIndex = selected.length + 1;
   const goal = typeof values["universal.goal"] === "string" ? values["universal.goal"].trim() : "";
-  const canSubmit = selected.length >= 1 && goal.length > 0;
+  const email = typeof values["universal.email"] === "string" ? values["universal.email"] : "";
+  const hasGoal = goal.length > 0;
+  const hasEmail = isValidEmail(email);
+  const canSubmit = selected.length >= 1 && hasGoal && hasEmail;
+  // What's still missing, for a helpful submit-disabled hint.
+  const submitHint = !hasGoal
+    ? "Add a one-line goal to finish."
+    : !hasEmail
+      ? "Add the email address to send to."
+      : "";
 
   // Live preview of the resolved tone, used to pre-fill the tone question.
   const suggestedTone = React.useMemo(
@@ -78,8 +88,12 @@ export function OnboardingFlow() {
     setResolved(result);
     setSubmitted(true);
 
-    // No backend yet (by design). When PUT /me/profile exists, POST this payload:
+    // No backend yet (by design). When PUT /me/profile exists, POST this payload.
+    // `email` and `sendTime` are surfaced as delivery metadata, separate from
+    // the generation params/context.
     const payload = {
+      email: normalizeEmail(values["universal.email"]),
+      sendTime: values["universal.sendTime"] ?? "dawn",
       rawAnswers: { selectedCategories: selected, values },
       params: result.params,
       contextLines: result.contextLines,
@@ -198,8 +212,8 @@ export function OnboardingFlow() {
             <Check className="size-4" />
             See my mornings
           </Button>
-          {!canSubmit && (
-            <span className="text-xs text-ink-soft">Add a one-line goal to finish.</span>
+          {!canSubmit && submitHint && (
+            <span className="text-xs text-ink-soft">{submitHint}</span>
           )}
         </div>
       </div>

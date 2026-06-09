@@ -34,6 +34,7 @@ export function Confirmation({
 }: ConfirmationProps) {
   const name = asText(values["universal.name"]);
   const goal = asText(values["universal.goal"]);
+  const email = asText(values["universal.email"]);
   const note = asText(values["universal.note"]);
   const time = SEND_TIMES[String(values["universal.sendTime"] ?? "dawn")] ?? "7:00am";
 
@@ -48,13 +49,24 @@ export function Confirmation({
       </h2>
       <p className="mx-auto mt-3 max-w-md text-lg text-ink-soft">
         Your first email arrives tomorrow at{" "}
-        <span className="font-medium text-ink">{time}</span>.
+        <span className="font-medium text-ink">{time}</span>
+        {email ? (
+          <>
+            {" "}
+            at <span className="font-medium text-ink">{email}</span>
+          </>
+        ) : null}
+        .
       </p>
 
       {/* A quiet summary of what they told us, with edit affordances. */}
       <div className="mx-auto mt-9 max-w-md space-y-3 text-left">
         <SummaryRow label="Your goal" onEdit={onEditUniversal}>
           {goal ?? <span className="text-ink-soft">—</span>}
+        </SummaryRow>
+
+        <SummaryRow label="Sending to" onEdit={onEditUniversal}>
+          {email ?? <span className="text-ink-soft">—</span>}
         </SummaryRow>
 
         <SummaryRow label="Tone" onEdit={onEditUniversal}>

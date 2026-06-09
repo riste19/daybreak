@@ -25,7 +25,8 @@ export type InputType =
   | "multi_select"
   | "scale" // 1–5
   | "short_text"
-  | "chip_multi";
+  | "chip_multi"
+  | "email";
 
 export type Depth = "surface" | "deeper";
 
@@ -1048,6 +1049,17 @@ export const universalQuestions: Question[] = [
     required: true,
     placeholder: "Write every day, get stronger, be more patient…",
     resolve: { params: { themes: ["identity"] }, context: "Primary goal: {value}." },
+  },
+  {
+    id: "universal.email",
+    label: "Where should your mornings land?",
+    help: "We send one short email a day. No spam, leave anytime.",
+    input: "email",
+    depth: "surface",
+    maxLength: 254,
+    required: true,
+    placeholder: "you@example.com",
+    // No `resolve`: delivery metadata, deliberately kept out of the model context.
   },
   {
     id: "universal.tone",

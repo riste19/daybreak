@@ -5,6 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { CAPS, type Question } from "@/lib/onboarding/onboarding-schema";
 import type { AnswerValue } from "@/lib/onboarding/resolveAnswers";
+import { isValidEmail } from "@/lib/validation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -150,9 +151,66 @@ function QuestionControl({
       );
     }
 
+    case "email": {
+      const text = typeof value === "string" ? value : "";
+      return (
+        <EmailField
+          value={text}
+          maxLength={question.maxLength ?? 254}
+          placeholder={question.placeholder}
+          ariaLabel={question.label}
+          onChange={(v) => onChange(v === "" ? undefined : v)}
+        />
+      );
+    }
+
     default:
       return null;
   }
+}
+
+/* ───────────────────────────── Email field ──────────────────────────── */
+
+function EmailField({
+  value,
+  maxLength,
+  placeholder,
+  ariaLabel,
+  onChange,
+}: {
+  value: string;
+  maxLength: number;
+  placeholder?: string;
+  ariaLabel: string;
+  onChange: (value: string) => void;
+}) {
+  // Only flag an invalid address after the user has left the field — never
+  // nag them mid-typing.
+  const [touched, setTouched] = React.useState(false);
+  const invalid = touched && value.trim() !== "" && !isValidEmail(value);
+
+  return (
+    <div>
+      <Input
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        value={value}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        aria-invalid={invalid}
+        onBlur={() => setTouched(true)}
+        onChange={(e) => onChange(e.target.value)}
+        className={invalid ? "border-destructive focus-visible:ring-destructive" : undefined}
+      />
+      {invalid && (
+        <p role="alert" className="mt-1.5 text-sm text-destructive">
+          That doesn&apos;t look like a complete email address.
+        </p>
+      )}
+    </div>
+  );
 }
 
 /* ───────────────────────────── Chip group ───────────────────────────── */
