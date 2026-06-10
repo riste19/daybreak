@@ -88,21 +88,6 @@
     scroll-behavior: smooth;
   }
 
-  /* Tailwind v4's preflight resets buttons to the default cursor — restore the
-     pointer for every interactive control (buttons, role=button, links).
-     Disabled controls keep the not-allowed cursor. */
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  label[for],
-  summary {
-    cursor: pointer;
-  }
-
-  button:disabled,
-  [aria-disabled="true"] {
-    cursor: not-allowed;
-  }
-
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -124,6 +109,23 @@
       transition-duration: 0.001ms !important;
     }
   }
+}
+
+/* Tailwind v4's preflight no longer sets `cursor: pointer` on buttons, and its
+   preflight lives in `@layer base` — so a rule inside that same layer can lose
+   the cascade. Declaring this UNLAYERED guarantees it wins: unlayered author
+   styles always beat layered ones, regardless of specificity. Restores the
+   pointer for every interactive control; disabled controls show not-allowed. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+label[for],
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 /* Gentle reveal for conditionally-shown questions (showIf) and step changes. */

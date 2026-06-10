@@ -35,7 +35,9 @@ export function CategoryGrid({ selected, onToggle, max }: CategoryGridProps) {
               isSelected
                 ? "border-primary bg-secondary shadow-sm"
                 : "border-border bg-card hover:border-primary/40 hover:bg-secondary/50",
-              disabled && "cursor-not-allowed opacity-45 hover:border-border hover:bg-card",
+              disabled
+                ? "cursor-not-allowed opacity-45 hover:border-border hover:bg-card"
+                : "cursor-pointer",
             )}
           >
             <span

@@ -106,7 +106,7 @@ function QuestionControl({
                 aria-pressed={value === n}
                 onClick={() => onChange(value === n ? undefined : n)}
                 className={cn(
-                  "h-12 flex-1 rounded-xl border text-base font-medium transition-colors",
+                  "h-12 flex-1 cursor-pointer rounded-xl border text-base font-medium transition-colors",
                   value === n
                     ? "border-primary bg-primary text-primary-foreground shadow-sm"
                     : "border-border bg-card text-ink-soft hover:border-primary/40",
@@ -249,7 +249,9 @@ function ChipGroup({
                   ? "border-primary/50 bg-primary/10 text-ink"
                   : "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-card text-ink hover:border-primary/40 hover:bg-secondary/60",
-              disabled && "cursor-not-allowed opacity-40 hover:border-border hover:bg-card",
+              disabled
+                ? "cursor-not-allowed opacity-40 hover:border-border hover:bg-card"
+                : "cursor-pointer",
             )}
           >
             <span className="block leading-tight">{opt.label}</span>
