@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { GenerationService } from "./generation.service";
+import { GenerationService, MAX_ATTEMPTS } from "./generation.service";
 import type { LlmClient } from "./gemini/llm-client";
 import type { GenerationInput } from "./domain/types";
 import { FALLBACK_BANK } from "./fallback/fallback-bank";
@@ -21,13 +21,13 @@ function input(overrides: Partial<GenerationInput> = {}): GenerationInput {
 }
 
 describe("GenerationService", () => {
-  it("returns a fallback after 2 failed attempts", async () => {
+  it("returns a fallback only after MAX_ATTEMPTS failed attempts", async () => {
     const llm: LlmClient = { generateEmailJson: vi.fn().mockResolvedValue("not valid json") };
     const service = new GenerationService(llm);
 
     const result = await service.generate(input(), FIXED_NOW);
 
-    expect(llm.generateEmailJson).toHaveBeenCalledTimes(2);
+    expect(llm.generateEmailJson).toHaveBeenCalledTimes(MAX_ATTEMPTS);
     expect(result.usedFallback).toBe(true);
     expect(FALLBACK_BANK.map((m) => m.body)).toContain(result.body);
   });

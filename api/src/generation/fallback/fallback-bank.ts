@@ -4,7 +4,7 @@ import type { ModelEmail } from "../domain/types";
  * Hand-written fallback messages used when generation fails twice, or when the
  * input is blocked by moderation. Deliberately generic (no personalization) and
  * varied in tone so a fallback morning still feels intentional. Each stays well
- * within the output bounds (subject 3–80 chars, body ≤120 words, no markup).
+ * within the output bounds (subject 3–80 chars, body ≤200 words, no markup).
  */
 export const FALLBACK_BANK: readonly ModelEmail[] = [
   // ── gentle ──

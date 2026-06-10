@@ -28,10 +28,18 @@ describe("validateOutput", () => {
     expect(res.ok).toBe(true);
   });
 
-  it("rejects a body over 120 words", () => {
-    const body = Array.from({ length: 121 }, () => "word").join(" ");
+  it("rejects a body over 200 words", () => {
+    const body = Array.from({ length: 201 }, () => "word").join(" ");
     const res = validateOutput(JSON.stringify({ subject: "Too long", body }));
     expect(res.ok).toBe(false);
+  });
+
+  it("accepts a multi-paragraph body separated by blank lines", () => {
+    const body =
+      "Good morning, Maya. Some mornings ask only that you show up.\n\n" +
+      "Today, let the small honest effort be the whole of it — that is enough.";
+    const res = validateOutput(JSON.stringify({ subject: "A good morning", body }));
+    expect(res.ok).toBe(true);
   });
 
   it("rejects a code fence in the body", () => {

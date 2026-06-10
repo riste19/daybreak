@@ -90,7 +90,7 @@ response is a `GenerationResult`.
   interpolated value is flattened to one line so a crafted field can't fake the
   block structure.
 - **validateOutput** — strips ```json fences, parses safely, and bounds the
-  result (subject 3–80 chars, body 1–120 words, no fences / HTML / JSON braces).
+  result (subject 3–80 chars, body 1–200 words, no fences / HTML / JSON braces).
 - **retry + fallback** — up to 2 attempts; on repeated failure (or a moderation
   block) it returns one of ~20 hand-written `FALLBACK_BANK` messages with
   `usedFallback: true`.

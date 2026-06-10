@@ -8,8 +8,12 @@ import { validateOutput } from "./validation/validate-output";
 import { pickFallback } from "./fallback/fallback-bank";
 import { LLM_CLIENT, type LlmClient } from "./gemini/llm-client";
 
-/** Generation attempts before giving up and using the fallback bank. */
-const MAX_ATTEMPTS = 2;
+/**
+ * Generation attempts before giving up and using the fallback bank. The fallback
+ * is a last resort — a daily email is not latency-sensitive, so we'd rather spend
+ * several more attempts than send a generic message.
+ */
+export const MAX_ATTEMPTS = 10;
 
 /**
  * Orchestrates one daily-email generation:

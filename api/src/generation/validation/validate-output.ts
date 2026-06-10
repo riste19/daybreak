@@ -7,8 +7,9 @@ import { ModelEmailSchema } from "../domain/types";
  * then falls back). Rules:
  *  - tolerate ```json fences and surrounding prose by extracting the JSON object
  *  - subject 3–80 chars (trimmed)
- *  - body 1–120 words
+ *  - body 1–200 words
  *  - body must not contain code fences, HTML tags, or JSON braces
+ *    (blank-line paragraph breaks are fine — newlines are not restricted)
  */
 
 export type ValidateOutputResult =
@@ -36,8 +37,8 @@ export function validateOutput(raw: string): ValidateOutputResult {
   }
 
   const words = body.split(/\s+/).filter(Boolean).length;
-  if (words < 1 || words > 120) {
-    return { ok: false, reason: `body word count ${words} out of 1–120` };
+  if (words < 1 || words > 200) {
+    return { ok: false, reason: `body word count ${words} out of 1–200` };
   }
 
   if (CODE_FENCE_RE.test(body)) return { ok: false, reason: "body contains code fence" };

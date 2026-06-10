@@ -7,13 +7,14 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/config";
 import { categories } from "@/lib/onboarding/onboarding-schema";
-import { resolveAnswers, type AnswerValue, type ResolvedAnswers } from "@/lib/onboarding/resolveAnswers";
-import { isValidEmail, normalizeEmail } from "@/lib/validation";
+import { resolveAnswers, type AnswerValue } from "@/lib/onboarding/resolveAnswers";
+import { buildGenerationInput, type GenerationInput } from "@/lib/onboarding/buildGenerationInput";
+import { isValidEmail } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
 import { UniversalStep } from "./universal-step";
-import { Confirmation } from "./confirmation";
+import { DebugReview } from "./debug-review";
 import { ProgressDots } from "./progress-dots";
 
 type Values = Record<string, AnswerValue>;
@@ -33,7 +34,7 @@ export function OnboardingFlow() {
   const [values, setValues] = React.useState<Values>({});
   const [index, setIndex] = React.useState(0);
   const [submitted, setSubmitted] = React.useState(false);
-  const [resolved, setResolved] = React.useState<ResolvedAnswers | null>(null);
+  const [input, setInput] = React.useState<GenerationInput | null>(null);
 
   const topRef = React.useRef<HTMLDivElement>(null);
 
@@ -84,43 +85,20 @@ export function OnboardingFlow() {
   };
 
   const handleSubmit = () => {
-    const result = resolveAnswers({ selectedCategories: selected, values });
-    setResolved(result);
+    // Map answers to the engine's request body. Email/sendTime are delivery
+    // metadata and deliberately NOT part of GenerationInput.
+    setInput(buildGenerationInput({ selectedCategories: selected, values }));
     setSubmitted(true);
-
-    // No backend yet (by design). When PUT /me/profile exists, POST this payload.
-    // `email` and `sendTime` are surfaced as delivery metadata, separate from
-    // the generation params/context.
-    const payload = {
-      email: normalizeEmail(values["universal.email"]),
-      sendTime: values["universal.sendTime"] ?? "dawn",
-      rawAnswers: { selectedCategories: selected, values },
-      params: result.params,
-      contextLines: result.contextLines,
-      flags: result.flags,
-    };
-    console.info("[onboarding] resolved profile payload (ready to POST):", payload);
-
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
   };
 
-  /* ─────────────────────────── Confirmation ─────────────────────────── */
-  if (submitted && resolved) {
+  /* ─────────────────────── Debug review (dev phase) ──────────────────── */
+  if (submitted && input) {
     return (
       <Shell topRef={topRef}>
-        <Confirmation
-          selected={selected}
-          values={values}
-          resolved={resolved}
-          onEditCategories={() => {
-            setSubmitted(false);
-            goTo(0);
-          }}
-          onEditCategory={(id) => {
-            setSubmitted(false);
-            goTo(1 + selected.indexOf(id));
-          }}
-          onEditUniversal={() => {
+        <DebugReview
+          input={input}
+          onBackToEdit={() => {
             setSubmitted(false);
             goTo(universalIndex);
           }}
