@@ -16,6 +16,19 @@ export class AppConfigService {
     return this.config.get("GEMINI_API_KEY", { infer: true });
   }
 
+  /**
+   * All configured Gemini keys, in priority order. Splits the comma-separated
+   * GEMINI_API_KEY and drops blanks/dupes — the client fails over down this list.
+   */
+  get geminiApiKeys(): string[] {
+    const raw = this.config.get("GEMINI_API_KEY", { infer: true });
+    const keys = raw
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    return [...new Set(keys)];
+  }
+
   get geminiModel(): string {
     return this.config.get("GEMINI_MODEL", { infer: true });
   }

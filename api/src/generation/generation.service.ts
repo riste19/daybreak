@@ -47,7 +47,7 @@ export class GenerationService {
       return this.fallback(theme, now);
     }
 
-    const prompt = buildPrompt(moderation.input, theme, now);
+    const prompt = buildPrompt(moderation.input, theme, now, input.systemPromptOverride);
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
