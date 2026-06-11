@@ -42,18 +42,19 @@ export async function getWaitlistEntry(email: string): Promise<WaitlistEntry | n
 // ============================================================================
 
 /**
- * Create a new user (server-side after auth signup)
+ * Create a new user (server-side after auth signup).
+ * `authUserId` must be the id of the Supabase Auth user — it becomes users.id.
  */
 export async function createUser(
+  authUserId: string,
   email: string,
-  name: string | null,
-  authId?: string
+  name: string | null
 ): Promise<User> {
   const serverClient = createServerClient();
 
   const { data, error } = await serverClient
     .from('users')
-    .insert([{ email, name, auth_id: authId || null }])
+    .insert([{ id: authUserId, email, name }])
     .select()
     .single();
 

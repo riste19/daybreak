@@ -11,15 +11,13 @@ export type Database = {
           id: string;
           email: string;
           name: string | null;
-          auth_id: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
+          id: string; // must be the Supabase Auth user id (no auto-generate)
           email: string;
           name?: string | null;
-          auth_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -27,7 +25,6 @@ export type Database = {
           id?: string;
           email?: string;
           name?: string | null;
-          auth_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -3,10 +3,9 @@
 export type SubscriptionStatus = 'trial' | 'active' | 'cancelled';
 
 export interface User {
-  id: string;
+  id: string; // same value as the Supabase Auth user id
   email: string;
   name: string | null;
-  auth_id: string | null;
   created_at: string;
   updated_at: string;
 }
