@@ -141,7 +141,7 @@ button:disabled,
 }
 
 @utility animate-reveal {
-  animation: reveal-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: reveal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -161,4 +161,107 @@ button:disabled,
       transparent 72%
     ),
     linear-gradient(180deg, var(--color-night) 0%, var(--color-twilight) 60%, var(--color-horizon) 100%);
+}
+
+/* =============================================================
+   Hero "first light" entrance — plays once on initial paint, and
+   again on every refresh. Each row rises and fades up; stagger the
+   rows with an inline animation-delay for a slow, calm cascade.
+   The same rise is reused for onboarding step changes.
+   ============================================================= */
+@keyframes dawn-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-dawn-rise {
+  animation: dawn-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The sun at the foot of the hero blooms: it swells up from the horizon
+   and brightens into place. Uses the standalone `scale` property so it
+   composes with Tailwind's translate utilities instead of fighting them. */
+@keyframes dawn-bloom {
+  from {
+    opacity: 0;
+    scale: 0.55;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@utility animate-dawn-bloom {
+  animation: dawn-bloom 2.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* =============================================================
+   Route view transition — heading from the landing page into the
+   onboarding flow ("Set up your mornings"). Tagged `nav-forward`
+   on the CTA links; everything else stays instant (default: none).
+   The leaving page drifts up and fades; the arriving page rises
+   into the light from just below.
+   ============================================================= */
+::view-transition-old(.page-leave) {
+  animation:
+    320ms ease-in both vt-fade reverse,
+    560ms cubic-bezier(0.4, 0, 1, 1) both vt-drift-up;
+}
+
+::view-transition-new(.page-enter) {
+  animation:
+    720ms ease-out 220ms both vt-fade,
+    980ms cubic-bezier(0.22, 1, 0.36, 1) both vt-rise;
+}
+
+/* Let the page groups own the motion; suppress the default root crossfade
+   so the two don't compound into a muddy double-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes vt-rise {
+  from {
+    transform: translateY(34px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes vt-drift-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-22px);
+  }
+}
+
+/* Calm by design: strip positional motion from transitions for users who
+   prefer reduced motion. Content still swaps — it just doesn't travel. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+  }
 }

@@ -21,7 +21,7 @@ export function FinalCta() {
 
         <div className="mx-auto mt-9 flex flex-col items-center gap-3">
           <Button asChild size="lg" variant="glow">
-            <Link href="/start">
+            <Link href="/start" transitionTypes={["nav-forward"]}>
               Set up your mornings
               <ArrowRight className="size-4" />
             </Link>

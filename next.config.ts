@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  experimental: {
+    // Enables React's <ViewTransition> integration so route navigations
+    // (e.g. landing → /start) can animate. See app/page.tsx & app/start/page.tsx.
+    viewTransition: true,
+  },
 };
 
 export default nextConfig;

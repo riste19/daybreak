@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Sunrise } from "lucide-react";
 
 import { site } from "@/lib/config";
@@ -16,23 +17,27 @@ export function Footer() {
           </div>
         </div>
 
-        <nav className="flex items-center gap-6 text-sm">
-          <a href="#how-it-works" className="transition-colors hover:text-cream">
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
+          <Link href="/#how-it-works" className="transition-colors hover:text-cream">
             How it works
-          </a>
-          <a href="#sample" className="transition-colors hover:text-cream">
+          </Link>
+          <Link href="/#sample" className="transition-colors hover:text-cream">
             Sample
-          </a>
+          </Link>
+          <Link href="/about" className="transition-colors hover:text-cream">
+            About
+          </Link>
           <a
             href={site.social.href}
             className="transition-colors hover:text-cream"
+            target="_blank"
             rel="noopener noreferrer"
           >
             {site.social.label}
           </a>
-          <a href={`mailto:${site.contactEmail}`} className="transition-colors hover:text-cream">
+          <Link href="/contact" className="transition-colors hover:text-cream">
             Contact
-          </a>
+          </Link>
         </nav>
       </div>
 

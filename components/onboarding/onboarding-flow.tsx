@@ -96,13 +96,15 @@ export function OnboardingFlow() {
   if (submitted && input) {
     return (
       <Shell topRef={topRef} full>
-        <DebugReview
-          input={input}
-          onBackToEdit={() => {
-            setSubmitted(false);
-            goTo(universalIndex);
-          }}
-        />
+        <div className="animate-dawn-rise">
+          <DebugReview
+            input={input}
+            onBackToEdit={() => {
+              setSubmitted(false);
+              goTo(universalIndex);
+            }}
+          />
+        </div>
       </Shell>
     );
   }
@@ -111,37 +113,41 @@ export function OnboardingFlow() {
   if (index === 0) {
     return (
       <Shell topRef={topRef} wide>
-        <header className="mb-7 text-center">
-          <h1 className="font-display text-3xl font-medium text-ink sm:text-4xl">
-            What should your mornings focus on?
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-ink-soft">
-            Pick what you want {site.name} to focus on — up to {MAX_CATEGORIES}.
-            Even one is plenty.
+        {/* Keyed so the calm rise replays whenever we land back here — e.g.
+            tapping Back on the first question. */}
+        <div key={index} className="animate-dawn-rise">
+          <header className="mb-7 text-center">
+            <h1 className="font-display text-3xl font-medium text-ink sm:text-4xl">
+              What should your mornings focus on?
+            </h1>
+            <p className="mx-auto mt-3 max-w-md text-ink-soft">
+              Pick what you want {site.name} to focus on — up to {MAX_CATEGORIES}.
+              Even one is plenty.
+            </p>
+          </header>
+
+          <CategoryGrid
+            selected={selected}
+            onToggle={toggleCategory}
+            max={MAX_CATEGORIES}
+          />
+
+          <p className="mt-5 text-center text-sm text-ink-soft">
+            {selected.length >= MAX_CATEGORIES
+              ? `That's ${MAX_CATEGORIES} — a lovely place to start. You can change this anytime.`
+              : "You can change this anytime."}
           </p>
-        </header>
 
-        <CategoryGrid
-          selected={selected}
-          onToggle={toggleCategory}
-          max={MAX_CATEGORIES}
-        />
-
-        <p className="mt-5 text-center text-sm text-ink-soft">
-          {selected.length >= MAX_CATEGORIES
-            ? `That's ${MAX_CATEGORIES} — a lovely place to start. You can change this anytime.`
-            : "You can change this anytime."}
-        </p>
-
-        <div className="mt-8 flex items-center justify-center">
-          <Button
-            size="lg"
-            disabled={selected.length === 0}
-            onClick={() => goTo(1)}
-          >
-            Continue
-            <ArrowRight className="size-4" />
-          </Button>
+          <div className="mt-8 flex items-center justify-center">
+            <Button
+              size="lg"
+              disabled={selected.length === 0}
+              onClick={() => goTo(1)}
+            >
+              Continue
+              <ArrowRight className="size-4" />
+            </Button>
+          </div>
         </div>
       </Shell>
     );
@@ -155,7 +161,9 @@ export function OnboardingFlow() {
       <Shell topRef={topRef}>
         <StepBar active={index - 1} total={selected.length + 1} />
 
-        <div className="animate-reveal">
+        {/* `key` forces a remount each step so the calm rise replays — the
+            same entrance the hero uses. */}
+        <div key={index} className="animate-dawn-rise">
           <CategoryStep categoryId={categoryId} values={values} onChange={setAnswer} />
         </div>
 
@@ -176,7 +184,7 @@ export function OnboardingFlow() {
     <Shell topRef={topRef}>
       <StepBar active={selected.length} total={selected.length + 1} />
 
-      <div className="animate-reveal">
+      <div key={index} className="animate-dawn-rise">
         <UniversalStep values={values} onChange={setAnswer} suggestedTone={suggestedTone} />
       </div>
 

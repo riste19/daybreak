@@ -1,3 +1,5 @@
+import { ViewTransition } from "react";
+
 import { Hero } from "@/components/sections/hero";
 import { Problem } from "@/components/sections/problem";
 import { HowItWorks } from "@/components/sections/how-it-works";
@@ -8,14 +10,18 @@ import { Footer } from "@/components/sections/footer";
 
 export default function Home() {
   return (
-    <main>
-      <Hero />
-      <Problem />
-      <HowItWorks />
-      <WhyDifferent />
-      <SampleEmail />
-      <FinalCta />
-      <Footer />
-    </main>
+    // Animates out (drift up + fade) only when leaving via a `nav-forward`
+    // link — the "Set up your mornings" CTAs. All other navigation stays instant.
+    <ViewTransition exit={{ "nav-forward": "page-leave", default: "none" }}>
+      <main>
+        <Hero />
+        <Problem />
+        <HowItWorks />
+        <WhyDifferent />
+        <SampleEmail />
+        <FinalCta />
+        <Footer />
+      </main>
+    </ViewTransition>
   );
 }
