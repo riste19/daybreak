@@ -56,6 +56,12 @@ export const GenerationInputSchema = z.object({
   contextLines: z.array(z.string().max(200)).max(20).default([]),
   preferredThemes: z.array(PreferredThemeSchema).max(6).default([]),
   recentThemes: z.array(ThemeSchema).max(7).default([]),
+  /**
+   * Dev-only: overrides the hardcoded SYSTEM_INSTRUCTION for this one request.
+   * Used by the debug review screen to tune the prompt interactively. Not part
+   * of the product flow — the onboarding path never sends this.
+   */
+  systemPromptOverride: z.string().trim().min(1).max(4000).optional(),
 });
 export type GenerationInput = z.infer<typeof GenerationInputSchema>;
 

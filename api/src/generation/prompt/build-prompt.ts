@@ -41,6 +41,7 @@ export function buildPrompt(
   input: GenerationInput,
   theme: Theme,
   date: Date,
+  systemOverride?: string,
 ): BuiltPrompt {
   const weekday = WEEKDAYS[date.getUTCDay()];
   const avoid = input.recentThemes.length
@@ -67,7 +68,10 @@ export function buildPrompt(
     "=== END USER DATA ===",
   ].join("\n");
 
-  return { system: SYSTEM_INSTRUCTION, user };
+  // A dev override (from the debug screen) replaces the default system framing
+  // so the prompt can be tuned interactively; falls back to the canonical one.
+  const system = systemOverride?.trim() ? systemOverride.trim() : SYSTEM_INSTRUCTION;
+  return { system, user };
 }
 
 /**

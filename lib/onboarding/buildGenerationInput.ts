@@ -36,6 +36,8 @@ export interface GenerationInput {
   contextLines: string[];
   preferredThemes: PreferredTheme[];
   recentThemes: Theme[];
+  /** Dev-only prompt override used by the debug screen; omitted in the product flow. */
+  systemPromptOverride?: string;
 }
 
 export interface GenerationResult {

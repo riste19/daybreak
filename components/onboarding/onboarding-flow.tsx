@@ -95,7 +95,7 @@ export function OnboardingFlow() {
   /* ─────────────────────── Debug review (dev phase) ──────────────────── */
   if (submitted && input) {
     return (
-      <Shell topRef={topRef}>
+      <Shell topRef={topRef} full>
         <DebugReview
           input={input}
           onBackToEdit={() => {
@@ -205,11 +205,14 @@ function Shell({
   children,
   topRef,
   wide = false,
+  full = false,
 }: {
   children: React.ReactNode;
   topRef: React.RefObject<HTMLDivElement | null>;
   /** Intro uses a roomier container so the category cards aren't cramped. */
   wide?: boolean;
+  /** Debug review goes nearly full-width so the prompt/JSON panels can breathe. */
+  full?: boolean;
 }) {
   return (
     <div className="min-h-dvh bg-background">
@@ -217,7 +220,7 @@ function Shell({
       <div
         className={cn(
           "mx-auto flex min-h-dvh flex-col px-5 py-6 sm:py-10",
-          wide ? "max-w-3xl" : "max-w-xl",
+          full ? "max-w-400" : wide ? "max-w-3xl" : "max-w-xl",
         )}
       >
         <TopChrome />
