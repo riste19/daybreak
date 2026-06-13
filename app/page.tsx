@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ViewTransition } from "react";
 
 import { Hero } from "@/components/sections/hero";
@@ -7,6 +8,11 @@ import { WhyDifferent } from "@/components/sections/why-different";
 import { SampleEmail } from "@/components/sections/sample-email";
 import { FinalCta } from "@/components/sections/final-cta";
 import { Footer } from "@/components/sections/footer";
+
+export const metadata: Metadata = {
+  // Home title/description come from the root layout's defaults.
+  alternates: { canonical: "/" },
+};
 
 export default function Home() {
   return (

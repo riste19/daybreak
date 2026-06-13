@@ -50,6 +50,33 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/**
+ * Organization + WebSite structured data (JSON-LD) — helps search engines build
+ * a knowledge entity for the brand and enables richer results.
+ */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${site.url}/#organization`,
+      name: site.name,
+      url: site.url,
+      description: site.description,
+      email: site.contactEmail,
+      sameAs: [site.social.href],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${site.url}/#website`,
+      url: site.url,
+      name: site.name,
+      description: site.description,
+      publisher: { "@id": `${site.url}/#organization` },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,7 +88,13 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        {children}
+      </body>
     </html>
   );
 }
