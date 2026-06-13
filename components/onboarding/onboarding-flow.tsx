@@ -99,6 +99,7 @@ export function OnboardingFlow() {
         <div className="animate-dawn-rise">
           <DebugReview
             input={input}
+            to={email.trim()}
             onBackToEdit={() => {
               setSubmitted(false);
               goTo(universalIndex);

@@ -1,10 +1,10 @@
-# daily-email-api — generation engine
+# daily-email-api — generation engine + delivery
 
 The **generation engine** for Daybreak: given a recipient's name, goal, tone, and
-a little context, it produces one short motivational email for the day. This is
-**Phase 1 of the backend**, built in deliberate isolation — there is **no
-database, auth, scheduler, or email delivery here**. Just message generation, an
-HTTP door to poke at it, and tests.
+a little context, it produces one short motivational email for the day — plus the
+**delivery module** that renders it into the branded HTML template and sends it
+(Resend in production, console in dev). There is still **no database, auth, or
+scheduler here** — those are later phases that will call `DeliveryService`.
 
 It is a sibling of the marketing site / questionnaire in the repo root and
 **reuses that product's domain model**: the same lowercase `Tone` and `Theme`
@@ -34,12 +34,28 @@ cp .env.example .env
 | Variable         | Required | Default            | Notes                          |
 | ---------------- | -------- | ------------------ | ------------------------------ |
 | `GEMINI_API_KEY` | yes      | —                  | from Google AI Studio          |
-| `GEMINI_MODEL`   | no       | `gemini-2.0-flash` | override the model             |
+| `GEMINI_MODEL`   | no       | `gemini-2.5-flash` | override the model             |
 | `PORT`           | no       | `3001`             | port the dev server listens on |
+| `RESEND_API_KEY` | no       | —                  | unset → emails are **logged, not sent** |
+| `EMAIL_FROM`     | no       | `Daybreak <onboarding@resend.dev>` | Resend sandbox sender (see below) |
+| `EMAIL_REPLY_TO` | no       | —                  | optional Reply-To header       |
 
 > Without a valid `GEMINI_API_KEY` the server still boots and the endpoint still
 > responds — every generation just fails and returns a **fallback** message
 > (`usedFallback: true`). That is the engine degrading gracefully, by design.
+> Email delivery degrades the same way: without `RESEND_API_KEY` the send
+> endpoint works end-to-end but prints the email to the server console
+> (`"provider": "console"`).
+
+### Free email for testing (Resend)
+
+[Resend](https://resend.com)'s free tier is 100 emails/day, no card. Create an
+API key, put it in `RESEND_API_KEY`, and you can send immediately using the
+default sandbox sender `onboarding@resend.dev` — **no domain verification
+needed**, with one catch: the sandbox sender only delivers to the email address
+that owns the Resend account. That's exactly right for dev testing. To email
+real subscribers, verify a domain in Resend and set
+`EMAIL_FROM="Daybreak <hello@yourdomain>"`.
 
 ## Run
 
@@ -51,9 +67,11 @@ pnpm test          # run the Vitest suite (no API key needed — Gemini is mocke
 pnpm test:watch
 ```
 
-## The one endpoint
+## Endpoints
 
-`POST /generate/preview` — a dev/test surface. Body is a `GenerationInput`;
+### `POST /generate/preview` — generation only
+
+A dev/test surface. Body is a `GenerationInput`;
 response is a `GenerationResult`.
 
 ```ts
@@ -73,6 +91,72 @@ response is a `GenerationResult`.
 ```
 
 `Theme` is one of: `gratitude | momentum | identity | small_wins | resistance | reflection`.
+
+### `POST /delivery/send` — the full flow: generate → render → send
+
+Body is a `SendDailyInput` — everything `GenerationInput` accepts, plus:
+
+```ts
+{
+  to: string;             // recipient email
+  personalNote?: string;  // ≤500 — subscriber's own static text (premium feature)
+  message?: {             // an already-generated message (e.g. an approved
+    subject: string;      // /generate/preview result) — when present, delivery
+    body: string;         // sends exactly this instead of generating again
+    theme: Theme;
+  };
+}
+```
+
+`personalNote` is the future **premium static-text feature**: words the
+subscriber writes for themselves, rendered verbatim in a labelled block of the
+template. By design it **never enters the LLM prompt** — `DeliveryService`
+splits it off before generation and only rejoins it at the template (enforced
+by tests). It is screened for distress with the same detector the engine uses.
+
+Response:
+
+```ts
+// SendDailyResult
+{ to, subject, theme, usedFallback, provider /* "resend" | "console" */, messageId }
+```
+
+```bash
+curl -X POST http://localhost:3001/delivery/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "you@example.com",
+    "name": "Maya",
+    "primaryGoal": "Finish the first draft of my novel",
+    "tone": "gentle",
+    "personalNote": "You promised yourself one honest page a day. That is all.",
+    "recentThemes": ["gratitude"]
+  }'
+```
+
+### The email template
+
+`renderDailyEmail()` in `src/delivery/template/render-email.ts` is a **pure
+function** (data in → `{ html, text }` out) that mirrors the landing page's
+dawn design: cream page, white card, warm ink text, amber accents, the
+night-to-gold gradient strip, serif display headings (Georgia standing in for
+Fraunces, since webfonts are unreliable in email). It's email-client-safe —
+single 600px table, inline styles, bgcolor fallbacks — and always produces a
+plain-text alternative.
+
+Everything brand-shaped lives in an `EmailBranding` object with Daybreak
+defaults (`DEFAULT_BRANDING`): product name, tagline, footer copy, unsubscribe
+URL, the personal-note label, and the full color palette. Pass a partial
+override as the second argument to re-skin per subscriber/tier without touching
+the layout — this is the extension point for premium customization. Every
+interpolated value is HTML-escaped.
+
+To eyeball the design, render a sample to a file and open it:
+
+```bash
+pnpm build
+node -e "const{renderDailyEmail}=require('./dist/delivery/template/render-email.js');require('fs').writeFileSync('template-preview.html',renderDailyEmail({subject:'Two hundred honest words',body:'Morning, Maya.\n\nShow up to the page before the doubt wakes up.',tone:'gentle',theme:'momentum',personalNote:'One honest page a day.'}).html)"
+```
 
 ## How it works (the parts that matter)
 
@@ -206,6 +290,20 @@ api/
 │     └─ gemini/
 │        ├─ llm-client.ts          # LlmClient interface + DI token
 │        └─ gemini.client.ts       # @google/genai implementation
+│  └─ delivery/
+│     ├─ delivery.module.ts        # binds EMAIL_CLIENT: Resend if key set, else console
+│     ├─ delivery.controller.ts    # POST /delivery/send
+│     ├─ delivery.service.ts       # generate → render → send (keeps personalNote out of the LLM)
+│     ├─ delivery.service.test.ts
+│     ├─ domain/
+│     │  └─ types.ts               # SendDailyInput / SendDailyResult
+│     ├─ template/
+│     │  ├─ render-email.ts        # pure HTML+text renderer, EmailBranding customization
+│     │  └─ render-email.test.ts
+│     └─ email/
+│        ├─ email-client.ts        # EmailClient interface + DI token
+│        ├─ resend.client.ts       # Resend REST implementation (fetch, no SDK)
+│        └─ console.client.ts      # log-only client when RESEND_API_KEY is unset
 ├─ .env.example
 ├─ nest-cli.json
 ├─ package.json
@@ -216,6 +314,7 @@ api/
 
 ## Not included (later phases)
 
-No database, no auth, no scheduler, no email delivery, no subscriber model.
-`recentThemes` is supplied per-request rather than persisted. This package is the
-message-generation core those phases will consume.
+No database, no auth, no scheduler, no subscriber model. `recentThemes` is
+supplied per-request rather than persisted. The scheduler phase will call
+`DeliveryService.sendDaily()` directly (not over HTTP) with persisted
+subscriber data.

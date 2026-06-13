@@ -12,5 +12,7 @@ import { LLM_CLIENT } from "./gemini/llm-client";
     // The engine depends on the LlmClient interface; Gemini is the implementation.
     { provide: LLM_CLIENT, useClass: GeminiClient },
   ],
+  // DeliveryModule composes generation into the send flow.
+  exports: [GenerationService],
 })
 export class GenerationModule {}

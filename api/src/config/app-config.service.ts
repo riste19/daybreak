@@ -23,4 +23,16 @@ export class AppConfigService {
   get port(): number {
     return this.config.get("PORT", { infer: true });
   }
+
+  get resendApiKey(): string | undefined {
+    return this.config.get("RESEND_API_KEY", { infer: true });
+  }
+
+  get emailFrom(): string {
+    return this.config.get("EMAIL_FROM", { infer: true });
+  }
+
+  get emailReplyTo(): string | undefined {
+    return this.config.get("EMAIL_REPLY_TO", { infer: true });
+  }
 }

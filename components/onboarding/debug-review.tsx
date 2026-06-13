@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, Check, Copy, Send, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, Copy, Mail, Send, TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,17 +31,43 @@ const DEFAULT_SYSTEM_PROMPT =
 interface DebugReviewProps {
   /** The initial request body (from onboarding) — editable here. */
   input: GenerationInput;
+  /** Recipient address from onboarding — where "Email it to me" delivers. */
+  to: string;
   /** Return to the questionnaire to change answers. */
   onBackToEdit: () => void;
 }
 
 type Phase = "preview" | "sending" | "done";
 
+/** preview = generation only (/api/generate); deliver = generate + send (/api/send). */
+type Target = "preview" | "deliver";
+
 interface SendOutcome {
   status: number;
   ok: boolean;
-  /** Parsed response JSON — a GenerationResult on success, or an error shape. */
+  target: Target;
+  /** Parsed response JSON — a GenerationResult / SendDailyResult on success, or an error shape. */
   data: unknown;
+}
+
+/** Mirrors the engine's SendDailyResult (api/src/delivery/domain/types.ts). */
+interface SendDailyResult {
+  to: string;
+  subject: string;
+  theme: string;
+  usedFallback: boolean;
+  provider: string;
+  messageId: string;
+}
+
+function asSendResult(data: unknown): SendDailyResult | null {
+  if (data && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    if (typeof d.messageId === "string" && typeof d.provider === "string") {
+      return d as unknown as SendDailyResult;
+    }
+  }
+  return null;
 }
 
 /** Narrow an unknown response to the engine's success shape for nicer rendering. */
@@ -60,7 +86,7 @@ function asGenerationResult(data: unknown): GenerationResult | null {
  * engine, waits for explicit confirmation, then sends it and renders the raw
  * response — so the wiring can be inspected end to end before it's productized.
  */
-export function DebugReview({ input, onBackToEdit }: DebugReviewProps) {
+export function DebugReview({ input, to, onBackToEdit }: DebugReviewProps) {
   const [phase, setPhase] = React.useState<Phase>("preview");
   const [outcome, setOutcome] = React.useState<SendOutcome | null>(null);
   const [copied, setCopied] = React.useState(false);
@@ -82,14 +108,26 @@ export function DebugReview({ input, onBackToEdit }: DebugReviewProps) {
 
   const resetPrompt = () => setPromptText(DEFAULT_SYSTEM_PROMPT);
 
-  const send = async () => {
+  const send = async (target: Target, message?: GenerationResult) => {
     setPhase("sending");
 
     // What's in the prompt box IS the system prompt used for this request.
-    const body = { ...input, systemPromptOverride: promptText.trim() || undefined };
+    // "deliver" additionally carries the recipient and goes through the
+    // engine's real send path (template + Resend/console). When `message` is
+    // given (a preview the user approved), the engine sends exactly that
+    // instead of generating a fresh one.
+    const body = {
+      ...input,
+      systemPromptOverride: promptText.trim() || undefined,
+      ...(target === "deliver" ? { to } : {}),
+      ...(target === "deliver" && message
+        ? { message: { subject: message.subject, body: message.body, theme: message.theme } }
+        : {}),
+    };
+    const endpoint = target === "deliver" ? "/api/send" : "/api/generate";
 
     try {
-      const res = await fetch("/api/generate", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -97,11 +135,12 @@ export function DebugReview({ input, onBackToEdit }: DebugReviewProps) {
       const data = await res
         .json()
         .catch(() => ({ error: "Response body was not valid JSON." }));
-      setOutcome({ status: res.status, ok: res.ok, data });
+      setOutcome({ status: res.status, ok: res.ok, target, data });
     } catch (err) {
       setOutcome({
         status: 0,
         ok: false,
+        target,
         data: { error: "Network request failed.", detail: String(err) },
       });
     } finally {
@@ -170,19 +209,40 @@ export function DebugReview({ input, onBackToEdit }: DebugReviewProps) {
           <p className="mt-5 text-center text-sm text-ink-soft">
             Nothing is sent until you confirm.
           </p>
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <Button variant="ghost" onClick={onBackToEdit} disabled={phase === "sending"}>
               <ArrowLeft className="size-4" />
               Back to edit
             </Button>
-            <Button variant="glow" onClick={send} disabled={phase === "sending"}>
-              <Send className="size-4" />
-              {phase === "sending" ? "Sending…" : "Send to the agent"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => send("preview")}
+                disabled={phase === "sending"}
+              >
+                <Send className="size-4" />
+                {phase === "sending" ? "Sending…" : "Preview only"}
+              </Button>
+              <Button
+                variant="glow"
+                onClick={() => send("deliver")}
+                disabled={phase === "sending"}
+              >
+                <Mail className="size-4" />
+                {phase === "sending" ? "Sending…" : `Email it to ${to}`}
+              </Button>
+            </div>
           </div>
         </>
       ) : (
-        outcome && <ResultView outcome={outcome} onSendAgain={send} onBackToEdit={onBackToEdit} />
+        outcome && (
+          <ResultView
+            outcome={outcome}
+            to={to}
+            onSendAgain={send}
+            onBackToEdit={onBackToEdit}
+          />
+        )
       )}
     </div>
   );
@@ -192,34 +252,57 @@ export function DebugReview({ input, onBackToEdit }: DebugReviewProps) {
 
 function ResultView({
   outcome,
+  to,
   onSendAgain,
   onBackToEdit,
 }: {
   outcome: SendOutcome;
-  onSendAgain: () => void;
+  to: string;
+  onSendAgain: (target: Target, message?: GenerationResult) => void;
   onBackToEdit: () => void;
 }) {
   const result = outcome.ok ? asGenerationResult(outcome.data) : null;
+  const sent = outcome.ok && outcome.target === "deliver" ? asSendResult(outcome.data) : null;
   const responseJson = JSON.stringify(outcome.data, null, 2);
 
   return (
     <div className="mt-6">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <StatusBadge ok={outcome.ok} status={outcome.status} />
-        {result?.usedFallback && (
+        {(result ?? sent)?.usedFallback && (
           <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-ink-soft">
             <TriangleAlert className="size-3.5" />
             fallback email
           </span>
         )}
-        {result && (
+        {(result ?? sent) && (
           <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-xs text-ink-soft">
-            theme: {result.theme}
+            theme: {(result ?? sent)!.theme}
           </span>
         )}
       </div>
 
-      {/* Rendered email when the engine succeeded. */}
+      {/* Delivery receipt when the email was actually sent. */}
+      {sent && (
+        <Panel
+          title="Delivered"
+          subtitle={
+            sent.provider === "console"
+              ? "Engine has no RESEND_API_KEY — the email was printed to its console instead of sent."
+              : undefined
+          }
+        >
+          <div className="text-sm text-ink">
+            <span className="font-medium">“{sent.subject}”</span> sent to{" "}
+            <span className="font-medium">{sent.to}</span>
+          </div>
+          <p className="mt-1 font-mono text-xs text-ink-soft">
+            provider: {sent.provider} · id: {sent.messageId}
+          </p>
+        </Panel>
+      )}
+
+      {/* Rendered email when the engine succeeded (preview target only). */}
       {result && (
         <Panel title="Rendered email">
           <div className="text-sm font-medium text-ink">{result.subject}</div>
@@ -238,15 +321,24 @@ function ResultView({
         <JsonBlock json={responseJson} tone={outcome.ok ? "default" : "error"} />
       </Panel>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" onClick={onBackToEdit}>
           <ArrowLeft className="size-4" />
           Back to edit
         </Button>
-        <Button variant="outline" onClick={onSendAgain}>
-          <Send className="size-4" />
-          Send again
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => onSendAgain(outcome.target)}>
+            <Send className="size-4" />
+            {outcome.target === "preview" ? "Generate again" : "Send again"}
+          </Button>
+          {/* Previewed and approved → deliver this exact message. */}
+          {result && (
+            <Button variant="glow" onClick={() => onSendAgain("deliver", result)}>
+              <Mail className="size-4" />
+              Email this to {to}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

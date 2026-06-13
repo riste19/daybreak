@@ -8,7 +8,7 @@
  * unreachable, we answer 502 with a readable JSON error rather than throwing.
  */
 
-const API_BASE = process.env.DAYBREAK_API_URL ?? "http://localhost:3001";
+const API_BASE = process.env.DAYBREAK_API_URL ?? "http://localhost:3002";
 
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;
