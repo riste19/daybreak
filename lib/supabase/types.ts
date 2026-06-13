@@ -87,6 +87,7 @@ export type Database = {
           custom_notes: string | null;
           preferred_themes: Json;
           focus_categories: Json;
+          email_layout: Json;
           timezone: string;
           created_at: string;
           updated_at: string;
@@ -100,6 +101,7 @@ export type Database = {
           custom_notes?: string | null;
           preferred_themes?: Json;
           focus_categories?: Json;
+          email_layout?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -113,6 +115,7 @@ export type Database = {
           custom_notes?: string | null;
           preferred_themes?: Json;
           focus_categories?: Json;
+          email_layout?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -211,27 +214,9 @@ export type Database = {
   };
 };
 
-public type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (Database['public']['Tables'] & Database['public']['Views'])
-    | { schema: keyof Database }
-    | { name: keyof (Database['public']['Tables'] & Database['public']['Views']) },
-  TableName extends PublicTableNameOrOptions extends { name: infer P } ? P : PublicTableNameOrOptions extends keyof (Database['public']['Tables'] &
-    Database['public']['Views'])
-    ? PublicTableNameOrOptions
-    : never = never
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] & {
-      Row: Database[PublicTableNameOrOptions['schema']]['Tables'][TableName]['Row'];
-      Insert: Database[PublicTableNameOrOptions['schema']]['Tables'][TableName]['Insert'];
-      Update: Database[PublicTableNameOrOptions['schema']]['Tables'][TableName]['Update'];
-      Relationships: Database[PublicTableNameOrOptions['schema']]['Tables'][TableName]['Relationships'];
-    }
-  : PublicTableNameOrOptions extends keyof (Database['public']['Tables'] & Database['public']['Views'])
-    ? (Database['public']['Tables'] & Database['public']['Views'])[PublicTableNameOrOptions] & {
-        Row: (Database['public']['Tables'] & Database['public']['Views'])[PublicTableNameOrOptions]['Row'];
-        Insert: (Database['public']['Tables'] & Database['public']['Views'])[PublicTableNameOrOptions]['Insert'];
-        Update: (Database['public']['Tables'] & Database['public']['Views'])[PublicTableNameOrOptions]['Update'];
-        Relationships: (Database['public']['Tables'] & Database['public']['Views'])[PublicTableNameOrOptions]['Relationships'];
-      }
-    : never;
+/**
+ * NOTE: The generated `Tables<>` / `TablesInsert<>` helper types were removed —
+ * they were unused (only `Database` is imported) and the boilerplate broke type
+ * checking because this schema declares no Views. Index tables directly via
+ * `Database['public']['Tables']['<name>']['Row']` if a helper is ever needed.
+ */

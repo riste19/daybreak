@@ -33,31 +33,31 @@ export const CHROME_ROLES = [
 ] as const;
 export type ChromeRole = (typeof CHROME_ROLES)[number];
 
-export interface ChromeSection {
+export type ChromeSection = {
   kind: "chrome";
   role: ChromeRole;
-}
+};
 
-export interface TextSection {
+export type TextSection = {
   kind: "text";
   id: string;
   text: string;
   handling: SectionHandling;
   /** Optional uppercase label above a verbatim block (e.g. "A note from you"). */
   label?: string;
-}
+};
 
-export interface AiSection {
+export type AiSection = {
   kind: "ai";
   id: string;
-}
+};
 
 export type EmailSection = ChromeSection | TextSection | AiSection;
 
-export interface EmailLayout {
+export type EmailLayout = {
   version: 1;
   sections: EmailSection[];
-}
+};
 
 /** Id of the single AI slot in the default layout (also the legacy-body slot). */
 export const DEFAULT_AI_SLOT_ID = "main";
