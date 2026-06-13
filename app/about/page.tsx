@@ -10,6 +10,7 @@ import { PageHero } from "@/components/sections/page-hero";
 export const metadata: Metadata = {
   title: "About us",
   description: `The story and the small team behind ${site.name} — one calm, personal email at first light.`,
+  alternates: { canonical: "/about" },
 };
 
 const values = [
