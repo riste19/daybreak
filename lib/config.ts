@@ -11,7 +11,7 @@ export const site = {
   tagline: "A fresh, personal nudge in your inbox every morning.",
   /** Short description for SEO / social cards. */
   description:
-    "Daybreak sends one short, AI-written email each morning — personalized to your goals and tasks, in a tone you choose, at the time you set. No app, no feed. Just a calm start to the day.",
+    "Daybreak is a personalized daily motivational email — one short, AI-written note each morning, shaped to your goals and tasks, in the tone and at the time you choose. No app, no feed. Just a calm start to the day.",
   /**
    * Canonical site URL — drives metadataBase, canonicals, sitemap & OG tags.
    * Set `NEXT_PUBLIC_SITE_URL` in the environment (e.g. the Vercel domain, and a

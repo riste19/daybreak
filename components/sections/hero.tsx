@@ -32,9 +32,10 @@ export function Hero() {
           className="animate-dawn-rise mt-6 max-w-xl text-lg leading-relaxed text-cream/75"
           style={{ animationDelay: "710ms" }}
         >
-          {site.name} sends one short, thoughtfully written email at dawn —
-          shaped around your goals, your tasks, and the tone you choose. No app
-          to open. No feed to scroll. Just a calm reason to begin with intention.
+          {site.name} is a personalized daily motivational email — one short,
+          thoughtfully written note at dawn, shaped around your goals, your
+          tasks, and the tone you choose. No app to open, no feed to scroll.
+          Just a calm reason to begin with intention.
         </p>
 
         <div
@@ -48,7 +49,7 @@ export function Hero() {
             </Link>
           </Button>
           <p className="text-sm text-cream/55">
-            Takes about a minute. Pick as little as one thing.
+            Free to start. Takes about a minute — pick as little as one thing.
           </p>
         </div>
       </div>
