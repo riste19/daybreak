@@ -9,7 +9,19 @@ const optionalString = z.preprocess(
 
 export const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+  /**
+   * Optional priority-ordered list of Gemini keys (comma-separated). When set,
+   * the engine tries each in order and fails over to the next on error — e.g.
+   * "<exhausted-key>,<working-key>". Overrides the single GEMINI_API_KEY.
+   */
+  GEMINI_API_KEYS: optionalString,
   GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
+  /**
+   * Anthropic key for the fallback provider. Unset → only Gemini is used; set →
+   * the engine fails over to Claude Haiku when Gemini errors (e.g. out of quota).
+   */
+  ANTHROPIC_API_KEY: optionalString,
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-haiku-4-5"),
   PORT: z.coerce.number().int().positive().default(3002),
   /** Resend API key. Unset → emails are logged to the console instead of sent. */
   RESEND_API_KEY: optionalString,

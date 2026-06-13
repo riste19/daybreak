@@ -1,7 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { GoogleGenAI } from "@google/genai";
 
-import { AppConfigService } from "../../config/app-config.service";
 import type { BuiltPrompt } from "../prompt/build-prompt";
 import type { LlmClient } from "./llm-client";
 
@@ -9,16 +8,20 @@ import type { LlmClient } from "./llm-client";
  * Gemini-backed LlmClient using the current @google/genai SDK.
  * `systemInstruction` carries our guardrails; `responseMimeType: application/json`
  * nudges the model toward parseable output (we still validate it ourselves).
+ *
+ * Takes an explicit key/model so the factory can stand up several instances with
+ * DIFFERENT keys (priority-ordered fallback) — see GenerationModule.
  */
-@Injectable()
 export class GeminiClient implements LlmClient {
+  readonly name: string;
   private readonly logger = new Logger(GeminiClient.name);
   private readonly ai: GoogleGenAI;
   private readonly model: string;
 
-  constructor(config: AppConfigService) {
-    this.ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
-    this.model = config.geminiModel;
+  constructor(opts: { apiKey: string; model: string; name?: string }) {
+    this.ai = new GoogleGenAI({ apiKey: opts.apiKey });
+    this.model = opts.model;
+    this.name = opts.name ?? "gemini";
   }
 
   async generateEmailJson(
