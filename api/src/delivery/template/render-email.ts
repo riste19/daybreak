@@ -43,6 +43,19 @@ export interface EmailBranding {
   footerNote: string;
   /** Unsubscribe target; rendered as the last footer link. */
   unsubscribeUrl: string;
+  /**
+   * Optional "go daily" nudge rendered just above the footer — a calm pointer to
+   * the subscription page. Set to `null` to hide it (e.g. for paid subscribers).
+   * Only shown when the layout includes a footer, so it travels with the frame.
+   */
+  upgrade: {
+    /** Short line above the link. */
+    note: string;
+    /** Link label (an arrow is appended by the template). */
+    label: string;
+    /** Subscription / pricing page. */
+    url: string;
+  } | null;
   colors: {
     /** Page background behind the card. */
     page: string;
@@ -71,6 +84,11 @@ export const DEFAULT_BRANDING: EmailBranding = {
   personalNoteLabel: "A note from you",
   footerNote: "You're receiving this because you asked for one good morning email a day.",
   unsubscribeUrl: "https://daybreak.email/unsubscribe",
+  upgrade: {
+    note: "Loving your mornings? Make them daily — your time, your tone, your own email layout.",
+    label: "Go daily",
+    url: "https://daybreak.email/subscribe",
+  },
   colors: {
     page: "#f6ecdd", // cream-deep
     card: "#fffdf9",
@@ -188,6 +206,27 @@ function signatureHtml(brand: EmailBranding): string {
   return `              <p style="margin:0 0 28px; font-family:${FONT_SANS}; font-size:16px; color:${c.inkSoft};">&mdash; ${escapeHtml(brand.productName)}</p>`;
 }
 
+function upgradeHtml(brand: EmailBranding): string {
+  if (!brand.upgrade) return "";
+  const c = brand.colors;
+  const u = brand.upgrade;
+  return `
+          <!-- Upgrade nudge: a calm pointer to the subscription page -->
+          <tr>
+            <td style="padding:18px 12px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="background-color:${c.noteBackground}; border:1px solid ${c.border}; border-radius:12px; padding:18px 22px;">
+                    <p style="margin:0 0 10px; font-family:${FONT_SANS}; font-size:13px; line-height:1.6; color:${c.inkSoft};">${escapeHtml(u.note)}</p>
+                    <a href="${escapeHtml(u.url)}" style="font-family:${FONT_SANS}; font-size:13px; font-weight:700; color:${c.accent}; text-decoration:none;">${escapeHtml(u.label)} &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+`;
+}
+
 function metaHtml(
   toneLabel: string,
   themeLabel: string,
@@ -254,6 +293,10 @@ export function renderDailyEmail(
     ? `background-color:${c.card}; border:1px solid ${c.border}; border-top:0; border-radius:0 0 14px 14px; padding:32px 36px 28px;`
     : `background-color:${c.card}; border:1px solid ${c.border}; border-radius:14px; padding:32px 36px 28px;`;
 
+  // The upgrade nudge travels with the footer frame (skipped when there's no
+  // footer, or when branding sets `upgrade: null`).
+  const upgrade = hasFooter ? upgradeHtml(brand) : "";
+
   const footer = hasFooter
     ? `
           <!-- Footer -->
@@ -290,7 +333,7 @@ ${dawnStrip}
 ${cardBlocks.join("\n")}
             </td>
           </tr>
-${footer}
+${upgrade}${footer}
         </table>
       </td>
     </tr>
@@ -356,6 +399,9 @@ function renderText(
         } else if (section.role === "meta") {
           lines.push(`Tone: ${toneLabel} · Today's theme: ${themeLabel}`, "");
         } else if (section.role === "footer") {
+          if (brand.upgrade) {
+            lines.push(brand.upgrade.note, `${brand.upgrade.label}: ${brand.upgrade.url}`, "");
+          }
           lines.push(brand.footerNote, `Unsubscribe: ${brand.unsubscribeUrl}`);
         }
         break;
