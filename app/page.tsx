@@ -10,7 +10,9 @@ import { FinalCta } from "@/components/sections/final-cta";
 import { Footer } from "@/components/sections/footer";
 
 export const metadata: Metadata = {
-  // Home title/description come from the root layout's defaults.
+  // Keyword-rich absolute title for the homepage (overrides the layout default);
+  // the description still comes from the root layout (site.description).
+  title: { absolute: "Daybreak — A personalized daily motivational email" },
   alternates: { canonical: "/" },
 };
 
