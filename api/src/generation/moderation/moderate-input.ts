@@ -127,7 +127,26 @@ export function moderateInput(input: GenerationInput): ModerationResult {
     return true;
   });
 
-  return { ok: true, input: { ...input, customNotes, contextLines }, flags };
+  // 5. outputPlan.feed is user text headed into the prompt — screen it like
+  //    contextLines: drop any line that tries to inject or is gibberish.
+  const outputPlan = input.outputPlan
+    ? {
+        ...input.outputPlan,
+        feed: input.outputPlan.feed.filter((line) => {
+          if (hasInjection(line)) {
+            flags.push({ field: "outputPlan.feed", reason: "injection" });
+            return false;
+          }
+          if (isGibberish(line)) {
+            flags.push({ field: "outputPlan.feed", reason: "gibberish" });
+            return false;
+          }
+          return true;
+        }),
+      }
+    : input.outputPlan;
+
+  return { ok: true, input: { ...input, customNotes, contextLines, outputPlan }, flags };
 }
 
 function firstDistressField(input: GenerationInput): string | undefined {
@@ -135,5 +154,6 @@ function firstDistressField(input: GenerationInput): string | undefined {
   if (hasDistress(input.primaryGoal)) return "primaryGoal";
   if (input.customNotes && hasDistress(input.customNotes)) return "customNotes";
   if (input.contextLines.some(hasDistress)) return "contextLines";
+  if (input.outputPlan?.feed.some(hasDistress)) return "outputPlan.feed";
   return undefined;
 }

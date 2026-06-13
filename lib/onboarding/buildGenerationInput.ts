@@ -17,6 +17,7 @@
 
 import { resolveAnswers, type AnswerSet } from "./resolveAnswers";
 import type { Theme, Tone } from "./onboarding-schema";
+import type { OutputPlan } from "@/lib/email/layout";
 
 /* ─────────────────────── Engine contract (mirror) ───────────────────────
  * Keep in sync with api/src/generation/domain/types.ts:
@@ -36,6 +37,12 @@ export interface GenerationInput {
   contextLines: string[];
   preferredThemes: PreferredTheme[];
   recentThemes: Theme[];
+  /**
+   * The modular output plan (AI slot ids + feed text), derived from the email
+   * layout via toOutputPlan. Added at request time in the review screen — the
+   * layout is customizable after this object is first built.
+   */
+  outputPlan?: OutputPlan;
   /** Dev-only prompt override used by the debug screen; omitted in the product flow. */
   systemPromptOverride?: string;
 }
@@ -43,6 +50,8 @@ export interface GenerationInput {
 export interface GenerationResult {
   subject: string;
   body: string;
+  /** Modular content per AI slot id. Joined into `body` for single-slot callers. */
+  sections?: Record<string, string>;
   theme: Theme;
   usedFallback: boolean;
 }

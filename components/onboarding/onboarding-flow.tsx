@@ -9,12 +9,14 @@ import { site } from "@/lib/config";
 import { categories } from "@/lib/onboarding/onboarding-schema";
 import { resolveAnswers, type AnswerValue } from "@/lib/onboarding/resolveAnswers";
 import { buildGenerationInput, type GenerationInput } from "@/lib/onboarding/buildGenerationInput";
+import { DEFAULT_LAYOUT, type EmailLayout } from "@/lib/email/layout";
 import { isValidEmail } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
 import { UniversalStep } from "./universal-step";
 import { DebugReview } from "./debug-review";
+import { CustomizeScreen } from "@/components/email-builder/customize-screen";
 import { ProgressDots } from "./progress-dots";
 
 type Values = Record<string, AnswerValue>;
@@ -35,6 +37,9 @@ export function OnboardingFlow() {
   const [index, setIndex] = React.useState(0);
   const [submitted, setSubmitted] = React.useState(false);
   const [input, setInput] = React.useState<GenerationInput | null>(null);
+  // Post-questionnaire: customize the email layout, then review & send.
+  const [stage, setStage] = React.useState<"customize" | "review">("customize");
+  const [emailLayout, setEmailLayout] = React.useState<EmailLayout>(DEFAULT_LAYOUT);
 
   const topRef = React.useRef<HTMLDivElement>(null);
 
@@ -88,23 +93,39 @@ export function OnboardingFlow() {
     // Map answers to the engine's request body. Email/sendTime are delivery
     // metadata and deliberately NOT part of GenerationInput.
     setInput(buildGenerationInput({ selectedCategories: selected, values }));
+    setStage("customize");
     setSubmitted(true);
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
   };
 
-  /* ─────────────────────── Debug review (dev phase) ──────────────────── */
+  /* ───────────────── Customize → Review (post-questionnaire) ──────────── */
   if (submitted && input) {
+    const backToQuestions = () => {
+      setSubmitted(false);
+      goTo(universalIndex);
+    };
     return (
       <Shell topRef={topRef} full>
-        <div className="animate-dawn-rise">
-          <DebugReview
-            input={input}
-            to={email.trim()}
-            onBackToEdit={() => {
-              setSubmitted(false);
-              goTo(universalIndex);
-            }}
-          />
+        <div key={stage} className="animate-dawn-rise">
+          {stage === "customize" ? (
+            <CustomizeScreen
+              input={input}
+              layout={emailLayout}
+              onChange={setEmailLayout}
+              onBack={backToQuestions}
+              onContinue={() => {
+                setStage("review");
+                requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
+              }}
+            />
+          ) : (
+            <DebugReview
+              input={input}
+              emailLayout={emailLayout}
+              to={email.trim()}
+              onBackToEdit={() => setStage("customize")}
+            />
+          )}
         </div>
       </Shell>
     );

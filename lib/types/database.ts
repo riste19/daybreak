@@ -1,5 +1,7 @@
 // Database schema types (auto-aligned with Supabase)
 
+import type { EmailLayout } from '@/lib/email/layout';
+
 export type SubscriptionStatus = 'trial' | 'active' | 'cancelled';
 
 export interface User {
@@ -32,6 +34,8 @@ export interface UserPreferences {
   custom_notes: string | null;
   preferred_themes: Array<{ theme: string; weight: number }>;
   focus_categories: string[];
+  /** The subscriber's customizable email layout (see migration 003). */
+  email_layout: EmailLayout;
   timezone: string;
   created_at: string;
   updated_at: string;

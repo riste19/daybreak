@@ -5,10 +5,12 @@ import { ArrowLeft, Check, Copy, Mail, Send, TriangleAlert } from "lucide-react"
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toOutputPlan, type EmailLayout } from "@/lib/email/layout";
 import type {
   GenerationInput,
   GenerationResult,
 } from "@/lib/onboarding/buildGenerationInput";
+import { EmailPreview } from "@/components/email-builder/email-preview";
 
 /**
  * The engine's default system framing — mirrors SYSTEM_INSTRUCTION in
@@ -31,9 +33,11 @@ const DEFAULT_SYSTEM_PROMPT =
 interface DebugReviewProps {
   /** The initial request body (from onboarding) — editable here. */
   input: GenerationInput;
+  /** The subscriber's email layout — sent with every generate/send request. */
+  emailLayout: EmailLayout;
   /** Recipient address from onboarding — where "Email it to me" delivers. */
   to: string;
-  /** Return to the questionnaire to change answers. */
+  /** Return to the customize screen. */
   onBackToEdit: () => void;
 }
 
@@ -86,7 +90,7 @@ function asGenerationResult(data: unknown): GenerationResult | null {
  * engine, waits for explicit confirmation, then sends it and renders the raw
  * response — so the wiring can be inspected end to end before it's productized.
  */
-export function DebugReview({ input, to, onBackToEdit }: DebugReviewProps) {
+export function DebugReview({ input, emailLayout, to, onBackToEdit }: DebugReviewProps) {
   const [phase, setPhase] = React.useState<Phase>("preview");
   const [outcome, setOutcome] = React.useState<SendOutcome | null>(null);
   const [copied, setCopied] = React.useState(false);
@@ -118,10 +122,20 @@ export function DebugReview({ input, to, onBackToEdit }: DebugReviewProps) {
     // instead of generating a fresh one.
     const body = {
       ...input,
+      // The layout drives generation: which AI slots to fill + feed material.
+      outputPlan: toOutputPlan(emailLayout),
       systemPromptOverride: promptText.trim() || undefined,
-      ...(target === "deliver" ? { to } : {}),
+      // Delivery also needs the full layout to render verbatim text in place.
+      ...(target === "deliver" ? { to, emailLayout } : {}),
       ...(target === "deliver" && message
-        ? { message: { subject: message.subject, body: message.body, theme: message.theme } }
+        ? {
+            message: {
+              subject: message.subject,
+              body: message.body,
+              sections: message.sections,
+              theme: message.theme,
+            },
+          }
         : {}),
     };
     const endpoint = target === "deliver" ? "/api/send" : "/api/generate";
@@ -239,6 +253,8 @@ export function DebugReview({ input, to, onBackToEdit }: DebugReviewProps) {
           <ResultView
             outcome={outcome}
             to={to}
+            emailLayout={emailLayout}
+            tone={input.tone}
             onSendAgain={send}
             onBackToEdit={onBackToEdit}
           />
@@ -253,11 +269,15 @@ export function DebugReview({ input, to, onBackToEdit }: DebugReviewProps) {
 function ResultView({
   outcome,
   to,
+  emailLayout,
+  tone,
   onSendAgain,
   onBackToEdit,
 }: {
   outcome: SendOutcome;
   to: string;
+  emailLayout: EmailLayout;
+  tone: string;
   onSendAgain: (target: Target, message?: GenerationResult) => void;
   onBackToEdit: () => void;
 }) {
@@ -305,10 +325,13 @@ function ResultView({
       {/* Rendered email when the engine succeeded (preview target only). */}
       {result && (
         <Panel title="Rendered email">
-          <div className="text-sm font-medium text-ink">{result.subject}</div>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">
-            {result.body}
-          </p>
+          <EmailPreview
+            layout={emailLayout}
+            sections={result.sections ?? {}}
+            subject={result.subject}
+            tone={tone}
+            theme={result.theme}
+          />
         </Panel>
       )}
 

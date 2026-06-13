@@ -9,6 +9,7 @@ import type { GenerationInput, GenerationResult } from "../generation/domain/typ
 const GENERATION_RESULT: GenerationResult = {
   subject: "Begin where you are",
   body: "Morning, Maya.\n\nStart small today.",
+  sections: { main: "Morning, Maya.\n\nStart small today." },
   theme: "momentum",
   usedFallback: false,
 };
@@ -87,6 +88,36 @@ describe("DeliveryService.sendDaily", () => {
 
     expect(sentEmails[0].html).not.toContain("hopeless");
     expect(sentEmails[0].text).not.toContain("hopeless");
+  });
+
+  it("routes feed text to the model but keeps verbatim text out of it", async () => {
+    await service.sendDaily(
+      makeInput({
+        emailLayout: {
+          version: 1,
+          sections: [
+            { kind: "chrome", role: "header" },
+            { kind: "chrome", role: "heading" },
+            { kind: "text", id: "t1", text: "Drink water. Non-negotiable.", handling: "verbatim" },
+            { kind: "ai", id: "main" },
+            { kind: "text", id: "t2", text: "call mom today", handling: "feed" },
+            { kind: "chrome", role: "footer" },
+          ],
+        },
+      }),
+    );
+
+    const generationInput = generate.mock.calls[0][0] as {
+      outputPlan?: { slots: string[]; feed: string[] };
+    };
+    // Feed text reaches the model; verbatim text never does.
+    expect(generationInput.outputPlan?.slots).toEqual(["main"]);
+    expect(generationInput.outputPlan?.feed).toEqual(["call mom today"]);
+    expect(JSON.stringify(generationInput)).not.toContain("Drink water");
+
+    // Verbatim text is rendered in the email; feed text is not its own block.
+    expect(sentEmails[0].html).toContain("Drink water. Non-negotiable.");
+    expect(sentEmails[0].html).not.toContain("call mom today");
   });
 
   it("sends a prepared message verbatim without regenerating", async () => {

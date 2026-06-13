@@ -1,25 +1,33 @@
 import type { Theme, Tone } from "../../generation/domain/types";
+import type { EmailLayout, EmailSection, TextSection } from "../domain/layout";
+import { DEFAULT_LAYOUT } from "../domain/layout";
 
 /**
  * The daily-email template — a pure renderer: data in, `{ html, text }` out.
  * No I/O, no provider knowledge, fully unit-testable.
  *
+ * Layout-driven: the email is an ORDERED stack of sections (the subscriber's
+ * mutable preference — see ../domain/layout). The renderer walks the layout and
+ * emits each block:
+ *  - chrome header  → dawn strip + wordmark   chrome heading → subject heading
+ *  - chrome signature/meta/footer → the framing lines
+ *  - text (verbatim) → the subscriber's own words, escaped, in a tinted block
+ *  - ai → that slot's generated content (from result.sections[id]), as paragraphs
+ * `text` blocks with handling "feed" are NOT rendered here (they were consumed by
+ * the model); only "verbatim" text reaches the template.
+ *
  * Design notes
- *  - Mirrors the landing page's dawn world (app/globals.css + the SampleEmail
- *    section): cream page, white card, warm ink text, amber accents, a dawn
- *    gradient strip where night meets gold, serif display headings (Fraunces
- *    on the web → Georgia in email, where webfonts are unreliable).
+ *  - Mirrors the landing page's dawn world: cream page, white card, warm ink,
+ *    amber accents, a dawn gradient strip, serif display headings (Georgia in
+ *    email, where webfonts are unreliable).
  *  - Email-client-safe: single 600px table, inline styles only, no flexbox/grid,
  *    bgcolor fallbacks behind every gradient. Renders in Gmail/Outlook/Apple Mail.
  *  - Customizable: everything brand-shaped lives in EmailBranding with Daybreak
- *    defaults — a future premium tier can override colors, labels, or footer
- *    per subscriber without touching the layout.
- *  - `personalNote` is the premium "static text" feature: words the subscriber
- *    wrote for themselves, rendered verbatim in a distinct block. It is template
- *    data ONLY — by design it never enters the LLM prompt (see DeliveryService).
+ *    defaults — a premium tier can override colors, labels, or footer per
+ *    subscriber without touching the layout.
  *
- * Every interpolated value is HTML-escaped. The LLM body is already validated
- * to contain no markup (validateOutput), but the template does not rely on that.
+ * Every interpolated value is HTML-escaped. The LLM body is already validated to
+ * contain no markup (validateOutput), but the template does not rely on that.
  */
 
 /* ───────────────────────────── Branding ─────────────────────────────── */
@@ -29,7 +37,7 @@ export interface EmailBranding {
   tagline: string;
   /** Linked from the wordmark and footer. */
   url: string;
-  /** Heading over the subscriber's own static text block. */
+  /** Default heading over a verbatim block that carries no explicit label. */
   personalNoteLabel: string;
   /** Footer line explaining why the email arrived. */
   footerNote: string;
@@ -48,7 +56,7 @@ export interface EmailBranding {
     inkSoft: string;
     /** Warm accent (links, label, dots). */
     accent: string;
-    /** Tinted panel behind the personal note. */
+    /** Tinted panel behind verbatim text blocks. */
     noteBackground: string;
     /** Dawn gradient stops for the top strip (night → gold). */
     dawn: [string, string, string, string];
@@ -79,12 +87,12 @@ export const DEFAULT_BRANDING: EmailBranding = {
 
 export interface DailyEmailTemplateInput {
   subject: string;
-  /** Plain-text body from the generation engine; blank lines split paragraphs. */
-  body: string;
+  /** Generated content per AI slot id (from GenerationResult.sections). */
+  sections: Record<string, string>;
   tone: Tone;
   theme: Theme;
-  /** Premium static text — already screened by the caller, never LLM-touched. */
-  personalNote?: string;
+  /** The ordered section list. Defaults to the canonical layout. */
+  layout?: EmailLayout;
 }
 
 export interface RenderedEmail {
@@ -103,7 +111,7 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Split engine output into paragraphs: blank-line separated, single \n kept as breaks. */
+/** Split body text into paragraphs: blank-line separated, single \n kept as breaks. */
 function toParagraphs(body: string): string[] {
   return body
     .split(/\n{2,}/)
@@ -131,6 +139,71 @@ const FONT_SANS =
   "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const FONT_DISPLAY = "Georgia, 'Times New Roman', serif";
 
+/* ───────────────────────── Block renderers (HTML) ────────────────────── */
+
+function wordmarkHtml(brand: EmailBranding): string {
+  const c = brand.colors;
+  return `              <!-- Wordmark -->
+              <p style="margin:0 0 28px;">
+                <a href="${escapeHtml(brand.url)}" style="font-family:${FONT_DISPLAY}; font-size:19px; font-weight:600; color:${c.ink}; text-decoration:none;">&#9728;&#xFE0E;&nbsp; ${escapeHtml(brand.productName)}</a>
+              </p>`;
+}
+
+function headingHtml(subject: string, c: EmailBranding["colors"]): string {
+  return `              <!-- Subject as the display heading -->
+              <h1 style="margin:0 0 20px; font-family:${FONT_DISPLAY}; font-size:27px; font-weight:500; line-height:1.25; color:${c.ink};">${escapeHtml(subject)}</h1>`;
+}
+
+function aiBlockHtml(content: string, c: EmailBranding["colors"]): string {
+  const paragraphs = toParagraphs(content);
+  if (paragraphs.length === 0) return "";
+  return paragraphs
+    .map(
+      (p) =>
+        `              <p style="margin:0 0 16px; font-family:${FONT_SANS}; font-size:16px; line-height:1.65; color:${c.ink};">${escapeHtml(p).replace(/\n/g, "<br />")}</p>`,
+    )
+    .join("\n");
+}
+
+function verbatimBlockHtml(
+  section: TextSection,
+  brand: EmailBranding,
+): string {
+  const c = brand.colors;
+  const labelHtml = section.label
+    ? `\n                  <p style="margin:0 0 6px; font-family:${FONT_SANS}; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:${c.accent};">${escapeHtml(section.label)}</p>`
+    : "";
+  return `              <!-- Verbatim text: the subscriber's own words, rendered as typed -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
+                <tr>
+                  <td style="background-color:${c.noteBackground}; border-left:3px solid ${c.accent}; border-radius:0 10px 10px 0; padding:16px 20px;">${labelHtml}
+                  <p style="margin:0; font-family:${FONT_DISPLAY}; font-size:16px; font-style:italic; line-height:1.6; color:${c.ink};">${escapeHtml(section.text).replace(/\n/g, "<br />")}</p>
+                </td>
+              </tr>
+            </table>`;
+}
+
+function signatureHtml(brand: EmailBranding): string {
+  const c = brand.colors;
+  return `              <p style="margin:0 0 28px; font-family:${FONT_SANS}; font-size:16px; color:${c.inkSoft};">&mdash; ${escapeHtml(brand.productName)}</p>`;
+}
+
+function metaHtml(
+  toneLabel: string,
+  themeLabel: string,
+  c: EmailBranding["colors"],
+): string {
+  const dot = `<span style="color:${c.accent};">&bull;</span>`;
+  return `              <!-- Meta strip: how today's email was shaped -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-top:1px solid ${c.border}; padding-top:14px; font-family:${FONT_SANS}; font-size:12px; color:${c.inkSoft};">
+                    ${dot} Tone: ${escapeHtml(toneLabel)} &nbsp;&nbsp;${dot} Today&rsquo;s theme: ${escapeHtml(themeLabel)}
+                  </td>
+                </tr>
+              </table>`;
+}
+
 /* ───────────────────────────── Renderer ─────────────────────────────── */
 
 export function renderDailyEmail(
@@ -143,31 +216,56 @@ export function renderDailyEmail(
     colors: { ...DEFAULT_BRANDING.colors, ...brandingOverrides.colors },
   };
   const c = brand.colors;
-  const paragraphs = toParagraphs(input.body);
+  const sections = (input.layout ?? DEFAULT_LAYOUT).sections;
   const toneLabel = TONE_LABELS[input.tone];
   const themeLabel = THEME_LABELS[input.theme];
 
-  const paragraphHtml = paragraphs
-    .map(
-      (p) =>
-        `<p style="margin:0 0 16px; font-family:${FONT_SANS}; font-size:16px; line-height:1.65; color:${c.ink};">${escapeHtml(p).replace(/\n/g, "<br />")}</p>`,
-    )
-    .join("\n");
+  // Walk the layout once → in-card HTML blocks + header/footer frame flags.
+  let hasHeader = false;
+  let hasFooter = false;
+  const cardBlocks: string[] = [];
 
-  const noteHtml = input.personalNote
+  for (const section of sections) {
+    const html = renderSectionHtml(section, input, brand, toneLabel, themeLabel);
+    if (section.kind === "chrome" && section.role === "header") hasHeader = true;
+    if (section.kind === "chrome" && section.role === "footer") {
+      hasFooter = true;
+      continue; // footer renders outside the card, below.
+    }
+    if (html) cardBlocks.push(html);
+  }
+
+  // Preheader: first sentence of the first AI slot's content.
+  const firstAi = sections.find((s): s is Extract<EmailSection, { kind: "ai" }> => s.kind === "ai");
+  const preheaderParas = firstAi ? toParagraphs(input.sections[firstAi.id] ?? "") : [];
+
+  const dawnStrip = hasHeader
     ? `
-            <!-- Personal note: the subscriber's own static words, rendered verbatim -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
-              <tr>
-                <td style="background-color:${c.noteBackground}; border-left:3px solid ${c.accent}; border-radius:0 10px 10px 0; padding:16px 20px;">
-                  <p style="margin:0 0 6px; font-family:${FONT_SANS}; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:${c.accent};">${escapeHtml(brand.personalNoteLabel)}</p>
-                  <p style="margin:0; font-family:${FONT_DISPLAY}; font-size:16px; font-style:italic; line-height:1.6; color:${c.ink};">${escapeHtml(input.personalNote).replace(/\n/g, "<br />")}</p>
-                </td>
-              </tr>
-            </table>`
+          <!-- Dawn strip: night warming into gold, the brand's signature gradient -->
+          <tr>
+            <td height="6" bgcolor="${c.dawn[2]}" style="border-radius:14px 14px 0 0; background-image:linear-gradient(90deg, ${c.dawn[0]} 0%, ${c.dawn[1]} 30%, ${c.dawn[2]} 70%, ${c.dawn[3]} 100%); font-size:0; line-height:0;">&nbsp;</td>
+          </tr>
+`
     : "";
 
-  const dot = `<span style="color:${c.accent};">&bull;</span>`;
+  // With the dawn strip, the card's top corners are square and the top border is
+  // dropped (the strip caps it); without it, the card is fully rounded + bordered.
+  const cardStyle = hasHeader
+    ? `background-color:${c.card}; border:1px solid ${c.border}; border-top:0; border-radius:0 0 14px 14px; padding:32px 36px 28px;`
+    : `background-color:${c.card}; border:1px solid ${c.border}; border-radius:14px; padding:32px 36px 28px;`;
+
+  const footer = hasFooter
+    ? `
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 12px 0; text-align:center; font-family:${FONT_SANS}; font-size:12px; line-height:1.7; color:${c.inkSoft};">
+              <p style="margin:0 0 4px;">${escapeHtml(brand.tagline)}</p>
+              <p style="margin:0;">${escapeHtml(brand.footerNote)}
+                &nbsp;<a href="${escapeHtml(brand.unsubscribeUrl)}" style="color:${c.accent};">Unsubscribe</a></p>
+            </td>
+          </tr>
+`
+    : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -179,53 +277,20 @@ export function renderDailyEmail(
 </head>
 <body style="margin:0; padding:0; background-color:${c.page};">
   <!-- Preheader: inbox preview text, invisible in the email itself -->
-  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${escapeHtml(firstSentence(paragraphs))}</div>
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">${escapeHtml(firstSentence(preheaderParas))}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${c.page};">
     <tr>
       <td align="center" style="padding:32px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%;">
-
-          <!-- Dawn strip: night warming into gold, the brand's signature gradient -->
-          <tr>
-            <td height="6" bgcolor="${c.dawn[2]}" style="border-radius:14px 14px 0 0; background-image:linear-gradient(90deg, ${c.dawn[0]} 0%, ${c.dawn[1]} 30%, ${c.dawn[2]} 70%, ${c.dawn[3]} 100%); font-size:0; line-height:0;">&nbsp;</td>
-          </tr>
-
+${dawnStrip}
           <!-- Card -->
           <tr>
-            <td bgcolor="${c.card}" style="background-color:${c.card}; border:1px solid ${c.border}; border-top:0; border-radius:0 0 14px 14px; padding:32px 36px 28px;">
+            <td bgcolor="${c.card}" style="${cardStyle}">
 
-              <!-- Wordmark -->
-              <p style="margin:0 0 28px;">
-                <a href="${escapeHtml(brand.url)}" style="font-family:${FONT_DISPLAY}; font-size:19px; font-weight:600; color:${c.ink}; text-decoration:none;">&#9728;&#xFE0E;&nbsp; ${escapeHtml(brand.productName)}</a>
-              </p>
-
-              <!-- Subject as the display heading -->
-              <h1 style="margin:0 0 20px; font-family:${FONT_DISPLAY}; font-size:27px; font-weight:500; line-height:1.25; color:${c.ink};">${escapeHtml(input.subject)}</h1>
-
-${paragraphHtml}
-${noteHtml}
-              <p style="margin:0 0 28px; font-family:${FONT_SANS}; font-size:16px; color:${c.inkSoft};">&mdash; ${escapeHtml(brand.productName)}</p>
-
-              <!-- Meta strip: how today's email was shaped -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="border-top:1px solid ${c.border}; padding-top:14px; font-family:${FONT_SANS}; font-size:12px; color:${c.inkSoft};">
-                    ${dot} Tone: ${escapeHtml(toneLabel)} &nbsp;&nbsp;${dot} Today&rsquo;s theme: ${escapeHtml(themeLabel)}
-                  </td>
-                </tr>
-              </table>
+${cardBlocks.join("\n")}
             </td>
           </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:20px 12px 0; text-align:center; font-family:${FONT_SANS}; font-size:12px; line-height:1.7; color:${c.inkSoft};">
-              <p style="margin:0 0 4px;">${escapeHtml(brand.tagline)}</p>
-              <p style="margin:0;">${escapeHtml(brand.footerNote)}
-                &nbsp;<a href="${escapeHtml(brand.unsubscribeUrl)}" style="color:${c.accent};">Unsubscribe</a></p>
-            </td>
-          </tr>
-
+${footer}
         </table>
       </td>
     </tr>
@@ -233,24 +298,84 @@ ${noteHtml}
 </body>
 </html>`;
 
-  const textLines = [
-    `${brand.productName} — ${input.subject}`,
-    "",
-    ...paragraphs.flatMap((p) => [p, ""]),
-  ];
-  if (input.personalNote) {
-    textLines.push(`-- ${brand.personalNoteLabel} --`, input.personalNote, "");
-  }
-  textLines.push(
-    `— ${brand.productName}`,
-    "",
-    `Tone: ${toneLabel} · Today's theme: ${themeLabel}`,
-    "",
-    brand.footerNote,
-    `Unsubscribe: ${brand.unsubscribeUrl}`,
-  );
+  return { html, text: renderText(input, brand, sections, toneLabel, themeLabel) };
+}
 
-  return { html, text: textLines.join("\n") };
+function renderSectionHtml(
+  section: EmailSection,
+  input: DailyEmailTemplateInput,
+  brand: EmailBranding,
+  toneLabel: string,
+  themeLabel: string,
+): string {
+  const c = brand.colors;
+  switch (section.kind) {
+    case "chrome":
+      switch (section.role) {
+        case "header":
+          return wordmarkHtml(brand);
+        case "heading":
+          return headingHtml(input.subject, c);
+        case "signature":
+          return signatureHtml(brand);
+        case "meta":
+          return metaHtml(toneLabel, themeLabel, c);
+        case "footer":
+          return ""; // handled by the frame
+      }
+      return "";
+    case "text":
+      return section.handling === "verbatim" ? verbatimBlockHtml(section, brand) : "";
+    case "ai":
+      return aiBlockHtml(input.sections[section.id] ?? "", c);
+  }
+}
+
+/* ─────────────────────────── Plain-text twin ─────────────────────────── */
+
+function renderText(
+  input: DailyEmailTemplateInput,
+  brand: EmailBranding,
+  sections: EmailSection[],
+  toneLabel: string,
+  themeLabel: string,
+): string {
+  const lines: string[] = [];
+  let wroteHeading = false;
+
+  for (const section of sections) {
+    switch (section.kind) {
+      case "chrome":
+        if (section.role === "header") {
+          lines.push(brand.productName, "");
+        } else if (section.role === "heading") {
+          lines.push(input.subject, "");
+          wroteHeading = true;
+        } else if (section.role === "signature") {
+          lines.push(`— ${brand.productName}`, "");
+        } else if (section.role === "meta") {
+          lines.push(`Tone: ${toneLabel} · Today's theme: ${themeLabel}`, "");
+        } else if (section.role === "footer") {
+          lines.push(brand.footerNote, `Unsubscribe: ${brand.unsubscribeUrl}`);
+        }
+        break;
+      case "text":
+        if (section.handling === "verbatim") {
+          if (section.label) lines.push(`-- ${section.label} --`);
+          lines.push(section.text, "");
+        }
+        break;
+      case "ai":
+        for (const p of toParagraphs(input.sections[section.id] ?? "")) {
+          lines.push(p, "");
+        }
+        break;
+    }
+  }
+
+  // Mirror the old "Product — Subject" header line when no explicit heading ran.
+  if (!wroteHeading) lines.unshift(`${brand.productName} — ${input.subject}`, "");
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 
 /** First sentence of the first paragraph, for the inbox preheader. */

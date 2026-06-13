@@ -32,7 +32,9 @@ export class GeminiClient implements LlmClient {
         systemInstruction: prompt.system,
         responseMimeType: "application/json",
         temperature: opts.temperature ?? 0.9,
-        maxOutputTokens: 800,
+        // Headroom for the modular JSON (subject + several slots). The body is
+        // still capped at 200 words by validateOutput; this just avoids truncation.
+        maxOutputTokens: 1200,
         // Gemini 2.5 models enable dynamic "thinking" by default, which consumes
         // the output-token budget on hidden reasoning and can leave NO tokens for
         // the actual JSON (manifesting as an empty response → "no JSON object

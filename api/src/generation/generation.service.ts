@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 
 import type { GenerationInput, GenerationResult, Theme } from "./domain/types";
+import { DEFAULT_SLOT_ID } from "./domain/types";
 import { selectTheme } from "./theme/select-theme";
 import { moderateInput } from "./moderation/moderate-input";
 import { buildPrompt } from "./prompt/build-prompt";
@@ -42,9 +43,13 @@ export class GenerationService {
           .join(", ")}`,
       );
     }
+    const slots = moderation.ok
+      ? moderation.input.outputPlan?.slots ?? [DEFAULT_SLOT_ID]
+      : input.outputPlan?.slots ?? [DEFAULT_SLOT_ID];
+
     if (!moderation.ok) {
       this.logger.warn("input blocked by moderation; returning fallback");
-      return this.fallback(theme, now);
+      return this.fallback(theme, now, slots);
     }
 
     const prompt = buildPrompt(moderation.input, theme, now, input.systemPromptOverride);
@@ -52,11 +57,12 @@ export class GenerationService {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         const raw = await this.llm.generateEmailJson(prompt);
-        const validated = validateOutput(raw);
+        const validated = validateOutput(raw, slots);
         if (validated.ok) {
           return {
             subject: validated.subject,
-            body: validated.body,
+            body: joinSections(validated.sections, slots),
+            sections: validated.sections,
             theme,
             usedFallback: false,
           };
@@ -70,16 +76,30 @@ export class GenerationService {
     }
 
     this.logger.warn(`all ${MAX_ATTEMPTS} attempts failed; returning fallback`);
-    return this.fallback(theme, now);
+    return this.fallback(theme, now, slots);
   }
 
-  private fallback(theme: Theme, now: Date): GenerationResult {
+  /**
+   * The fallback bank is a single message; place it in the first AI slot so it
+   * renders wherever the user put that slot. Other slots stay empty (skipped).
+   */
+  private fallback(theme: Theme, now: Date, slots: string[]): GenerationResult {
     const message = pickFallback(now);
+    const sections = { [slots[0]]: message.body };
     return {
       subject: message.subject,
       body: message.body,
+      sections,
       theme,
       usedFallback: true,
     };
   }
+}
+
+/** Join filled slots in plan order, blank-line separated — the convenience body. */
+function joinSections(sections: Record<string, string>, slots: string[]): string {
+  return slots
+    .map((slot) => sections[slot]?.trim() ?? "")
+    .filter((text) => text.length > 0)
+    .join("\n\n");
 }
