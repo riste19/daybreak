@@ -1,0 +1,5 @@
+# The NestJS generation engine (api/) is a SEPARATE application, deployed on its
+# own host (Railway/Render). Exclude it from the Vercel (Next.js frontend) build
+# so Vercel doesn't try to type-check it against api/'s own tsconfig without
+# api/'s installed dependencies (which it never installs here).
+api
