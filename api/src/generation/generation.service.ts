@@ -7,7 +7,7 @@ import { moderateInput } from "./moderation/moderate-input";
 import { buildPrompt } from "./prompt/build-prompt";
 import { validateOutput } from "./validation/validate-output";
 import { pickFallback } from "./fallback/fallback-bank";
-import { LLM_CLIENT, type LlmClient } from "./gemini/llm-client";
+import { LLM_CLIENT, type LlmClient } from "./llm/llm-client";
 
 /**
  * Generation attempts before giving up and using the fallback bank. The fallback
@@ -59,6 +59,7 @@ export class GenerationService {
         const raw = await this.llm.generateEmailJson(prompt);
         const validated = validateOutput(raw, slots);
         if (validated.ok) {
+          this.logger.log(`attempt ${attempt} succeeded — theme=${theme}`);
           return {
             subject: validated.subject,
             body: joinSections(validated.sections, slots),
