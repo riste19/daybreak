@@ -20,6 +20,30 @@ export class AppConfigService {
     return this.config.get("GEMINI_MODEL", { infer: true });
   }
 
+  /**
+   * Priority-ordered Gemini keys. Falls back to the single GEMINI_API_KEY when
+   * GEMINI_API_KEYS is unset. Always returns at least one key.
+   */
+  get geminiApiKeys(): string[] {
+    const list = this.config.get("GEMINI_API_KEYS", { infer: true });
+    if (list) {
+      const keys = list
+        .split(",")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0);
+      if (keys.length > 0) return keys;
+    }
+    return [this.geminiApiKey];
+  }
+
+  get anthropicApiKey(): string | undefined {
+    return this.config.get("ANTHROPIC_API_KEY", { infer: true });
+  }
+
+  get anthropicModel(): string {
+    return this.config.get("ANTHROPIC_MODEL", { infer: true });
+  }
+
   get port(): number {
     return this.config.get("PORT", { infer: true });
   }

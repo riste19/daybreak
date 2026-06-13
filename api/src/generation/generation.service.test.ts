@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { GenerationService, MAX_ATTEMPTS } from "./generation.service";
-import type { LlmClient } from "./gemini/llm-client";
+import type { LlmClient } from "./llm/llm-client";
 import type { GenerationInput } from "./domain/types";
 import { FALLBACK_BANK } from "./fallback/fallback-bank";
 

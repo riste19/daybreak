@@ -35,6 +35,8 @@ cp .env.example .env
 | ---------------- | -------- | ------------------ | ------------------------------ |
 | `GEMINI_API_KEY` | yes      | —                  | from Google AI Studio          |
 | `GEMINI_MODEL`   | no       | `gemini-2.5-flash` | override the model             |
+| `ANTHROPIC_API_KEY` | no    | —                  | set → fallback to Claude when Gemini errors (e.g. out of quota) |
+| `ANTHROPIC_MODEL` | no      | `claude-haiku-4-5` | override the fallback model    |
 | `PORT`           | no       | `3001`             | port the dev server listens on |
 | `RESEND_API_KEY` | no       | —                  | unset → emails are **logged, not sent** |
 | `EMAIL_FROM`     | no       | `Daybreak <onboarding@resend.dev>` | Resend sandbox sender (see below) |

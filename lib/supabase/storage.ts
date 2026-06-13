@@ -122,7 +122,7 @@ export async function createTrialSubscription(
     .single();
 
   if (error) throw new Error(`Failed to create subscription: ${error.message}`);
-  return data;
+  return data as Subscription;
 }
 
 /**
@@ -136,7 +136,7 @@ export async function getSubscription(): Promise<Subscription | null> {
 
   if (error?.code === 'PGRST116') return null;
   if (error) throw new Error(`Failed to fetch subscription: ${error.message}`);
-  return data;
+  return data as Subscription;
 }
 
 /**
@@ -175,7 +175,7 @@ export async function createUserPreferences(
     .single();
 
   if (error) throw new Error(`Failed to create preferences: ${error.message}`);
-  return data;
+  return data as UserPreferences;
 }
 
 /**
@@ -189,7 +189,7 @@ export async function getUserPreferences(): Promise<UserPreferences | null> {
 
   if (error?.code === 'PGRST116') return null;
   if (error) throw new Error(`Failed to fetch preferences: ${error.message}`);
-  return data;
+  return data as UserPreferences;
 }
 
 /**
@@ -205,7 +205,7 @@ export async function updateUserPreferences(
     .single();
 
   if (error) throw new Error(`Failed to update preferences: ${error.message}`);
-  return data;
+  return data as UserPreferences;
 }
 
 // ============================================================================
@@ -244,7 +244,7 @@ export async function saveGeneratedEmail(
     .single();
 
   if (error) throw new Error(`Failed to save generated email: ${error.message}`);
-  return data;
+  return data as GeneratedEmail;
 }
 
 /**
@@ -258,7 +258,7 @@ export async function getUserEmailHistory(limit: number = 30): Promise<Generated
     .limit(limit);
 
   if (error) throw new Error(`Failed to fetch email history: ${error.message}`);
-  return data || [];
+  return (data || []) as GeneratedEmail[];
 }
 
 /**
@@ -273,7 +273,7 @@ export async function getGeneratedEmail(emailId: string): Promise<GeneratedEmail
 
   if (error?.code === 'PGRST116') return null;
   if (error) throw new Error(`Failed to fetch email: ${error.message}`);
-  return data;
+  return data as GeneratedEmail;
 }
 
 // ============================================================================
