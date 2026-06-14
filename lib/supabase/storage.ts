@@ -313,3 +313,139 @@ export async function getUserWithRecentEmails(userId: string, limit: number = 5)
   if (error) throw new Error(`Failed to fetch user with emails: ${error.message}`);
   return data;
 }
+
+// ============================================================================
+// SERVER-SIDE (SERVICE ROLE) — for the subscribe flow + daily cron, which run
+// without a user session, so the anon/RLS helpers above don't apply here.
+// ============================================================================
+
+/** Create a subscriber (no auth: id is auto-generated, auth_id stays null). */
+export async function createSubscriber(
+  email: string,
+  name: string | null,
+): Promise<User> {
+  const serverClient = createServerClient();
+  const { data, error } = await serverClient
+    .from('users')
+    .insert([{ email, name }])
+    .select()
+    .single();
+  if (error) throw new Error(`Failed to create subscriber: ${error.message}`);
+  return data as User;
+}
+
+/** Server-side preferences upsert (keyed by the unique user_id). */
+export async function upsertUserPreferencesServer(
+  userId: string,
+  preferences: Partial<UserPreferences>,
+): Promise<void> {
+  const serverClient = createServerClient();
+  const { error } = await serverClient
+    .from('user_preferences')
+    .upsert([{ user_id: userId, ...preferences }], { onConflict: 'user_id' });
+  if (error) throw new Error(`Failed to upsert preferences: ${error.message}`);
+}
+
+/**
+ * Persist (or update) a subscriber and their preferences, and ensure a trial
+ * subscription exists. Idempotent by email. Used by the onboarding subscribe API.
+ */
+export async function subscribeUser(params: {
+  email: string;
+  name: string | null;
+  preferences: Partial<UserPreferences>;
+}): Promise<User> {
+  const serverClient = createServerClient();
+  const existingUser = await getUserByEmail(params.email);
+  const user = existingUser ?? (await createSubscriber(params.email, params.name));
+
+  await upsertUserPreferencesServer(user.id, params.preferences);
+
+  const { data: subs } = await serverClient
+    .from('subscriptions')
+    .select('id')
+    .eq('user_id', user.id)
+    .limit(1);
+  if (!subs || subs.length === 0) {
+    await createTrialSubscription(user.id);
+  }
+  return user;
+}
+
+/** A subscriber due for a daily send: their user row + preferences. */
+export type ActiveSubscriber = { user: User; preferences: UserPreferences };
+
+/** Active (trial-not-expired or active) subscribers with preferences. */
+export async function getActiveSubscribersForSend(): Promise<ActiveSubscriber[]> {
+  const serverClient = createServerClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: subs, error: subErr } = await serverClient
+    .from('subscriptions')
+    .select('user_id, status, trial_ends_at')
+    .in('status', ['trial', 'active']);
+  if (subErr) throw new Error(`Failed to load subscriptions: ${subErr.message}`);
+
+  const userIds = (subs ?? [])
+    .filter(
+      (s) => s.status === 'active' || !s.trial_ends_at || s.trial_ends_at > nowIso,
+    )
+    .map((s) => s.user_id as string);
+  if (userIds.length === 0) return [];
+
+  const [usersRes, prefsRes] = await Promise.all([
+    serverClient.from('users').select('*').in('id', userIds),
+    serverClient.from('user_preferences').select('*').in('user_id', userIds),
+  ]);
+  if (usersRes.error) throw new Error(`Failed to load users: ${usersRes.error.message}`);
+  if (prefsRes.error) throw new Error(`Failed to load preferences: ${prefsRes.error.message}`);
+
+  const prefByUser = new Map(
+    (prefsRes.data ?? []).map((p) => [p.user_id as string, p as UserPreferences]),
+  );
+  return (usersRes.data ?? [])
+    .map((u) => ({ user: u as User, preferences: prefByUser.get(u.id as string) }))
+    .filter((s): s is ActiveSubscriber => Boolean(s.preferences));
+}
+
+/** Recent themes for a user (newest first) — to keep daily variety. */
+export async function getRecentThemes(userId: string, limit = 7): Promise<string[]> {
+  const serverClient = createServerClient();
+  const { data, error } = await serverClient
+    .from('generated_emails')
+    .select('theme')
+    .eq('user_id', userId)
+    .order('sent_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Failed to load recent themes: ${error.message}`);
+  return (data ?? []).map((r) => r.theme as string);
+}
+
+/** Idempotency: has this user already been sent since `sinceIso` (e.g. midnight)? */
+export async function wasEmailSentSince(
+  userId: string,
+  sinceIso: string,
+): Promise<boolean> {
+  const serverClient = createServerClient();
+  const { data, error } = await serverClient
+    .from('generated_emails')
+    .select('id')
+    .eq('user_id', userId)
+    .gte('sent_at', sinceIso)
+    .limit(1);
+  if (error) throw new Error(`Failed to check send history: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/** Unsubscribe: cancel a subscriber's subscription by email. */
+export async function cancelSubscriptionByEmail(email: string): Promise<boolean> {
+  const serverClient = createServerClient();
+  const user = await getUserByEmail(email);
+  if (!user) return false;
+  const { error } = await serverClient
+    .from('subscriptions')
+    .update({ status: 'cancelled' })
+    .eq('user_id', user.id);
+  if (error) throw new Error(`Failed to cancel subscription: ${error.message}`);
+  return true;
+}

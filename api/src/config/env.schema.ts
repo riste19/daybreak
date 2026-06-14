@@ -28,6 +28,8 @@ export const EnvSchema = z.object({
   /** Sender. The resend.dev sandbox sender works without verifying a domain. */
   EMAIL_FROM: z.string().min(1).default("Daybreak <onboarding@resend.dev>"),
   EMAIL_REPLY_TO: optionalString,
+  /** Public app URL — used for the email's unsubscribe link. Set to the live site. */
+  APP_URL: z.string().min(1).default("https://daybreak.email"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -4,6 +4,7 @@ import { DeliveryService } from "./delivery.service";
 import type { SendDailyInput } from "./domain/types";
 import type { EmailClient, OutgoingEmail } from "./email/email-client";
 import type { GenerationService } from "../generation/generation.service";
+import type { AppConfigService } from "../config/app-config.service";
 import type { GenerationInput, GenerationResult } from "../generation/domain/types";
 
 const GENERATION_RESULT: GenerationResult = {
@@ -42,7 +43,8 @@ describe("DeliveryService.sendDaily", () => {
     });
     const fakeGeneration = { generate } as unknown as GenerationService;
     const fakeEmail: EmailClient = { provider: "fake", send };
-    service = new DeliveryService(fakeGeneration, fakeEmail);
+    const fakeConfig = { appUrl: "https://test.example" } as unknown as AppConfigService;
+    service = new DeliveryService(fakeGeneration, fakeEmail, fakeConfig);
   });
 
   it("generates, renders, and sends — returning the receipt", async () => {
