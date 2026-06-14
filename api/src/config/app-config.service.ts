@@ -59,4 +59,8 @@ export class AppConfigService {
   get emailReplyTo(): string | undefined {
     return this.config.get("EMAIL_REPLY_TO", { infer: true });
   }
+
+  get appUrl(): string {
+    return this.config.get("APP_URL", { infer: true });
+  }
 }

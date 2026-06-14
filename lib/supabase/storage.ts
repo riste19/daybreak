@@ -234,7 +234,7 @@ export async function saveGeneratedEmail(
     body: string;
     theme: string;
     used_fallback: boolean;
-    generation_input: Record<string, Json>;
+    generation_input: Record<string, unknown>;
   }
 ): Promise<GeneratedEmail> {
   const serverClient = createServerClient();
@@ -249,7 +249,7 @@ export async function saveGeneratedEmail(
         theme: email.theme,
         sent_at: new Date().toISOString(),
         used_fallback: email.used_fallback,
-        generation_input: email.generation_input,
+        generation_input: email.generation_input as Json,
       },
     ])
     .select()
@@ -552,4 +552,88 @@ async function preferencesFromTrialLead(
     },
     name: derived.name,
   };
+}
+
+// ============================================================================
+// DAILY SEND QUERIES (service role) — read helpers for the cron + unsubscribe.
+// Subscribers are created via provisionSubscriber (Supabase Auth, the canonical
+// model), so there is deliberately no no-login "createSubscriber" write path.
+// ============================================================================
+
+/** A subscriber due for a daily send: their user row + preferences. */
+export type ActiveSubscriber = { user: User; preferences: UserPreferences };
+
+/** Active (trial-not-expired or active) subscribers with preferences. */
+export async function getActiveSubscribersForSend(): Promise<ActiveSubscriber[]> {
+  const serverClient = createServerClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: subs, error: subErr } = await serverClient
+    .from('subscriptions')
+    .select('user_id, status, trial_ends_at')
+    .in('status', ['trial', 'active']);
+  if (subErr) throw new Error(`Failed to load subscriptions: ${subErr.message}`);
+
+  const userIds = (subs ?? [])
+    .filter(
+      (s) => s.status === 'active' || !s.trial_ends_at || s.trial_ends_at > nowIso,
+    )
+    .map((s) => s.user_id as string);
+  if (userIds.length === 0) return [];
+
+  const [usersRes, prefsRes] = await Promise.all([
+    serverClient.from('users').select('*').in('id', userIds),
+    serverClient.from('user_preferences').select('*').in('user_id', userIds),
+  ]);
+  if (usersRes.error) throw new Error(`Failed to load users: ${usersRes.error.message}`);
+  if (prefsRes.error) throw new Error(`Failed to load preferences: ${prefsRes.error.message}`);
+
+  const prefByUser = new Map(
+    (prefsRes.data ?? []).map((p) => [p.user_id as string, p as UserPreferences]),
+  );
+  return (usersRes.data ?? [])
+    .map((u) => ({ user: u as User, preferences: prefByUser.get(u.id as string) }))
+    .filter((s): s is ActiveSubscriber => Boolean(s.preferences));
+}
+
+/** Recent themes for a user (newest first) — to keep daily variety. */
+export async function getRecentThemes(userId: string, limit = 7): Promise<string[]> {
+  const serverClient = createServerClient();
+  const { data, error } = await serverClient
+    .from('generated_emails')
+    .select('theme')
+    .eq('user_id', userId)
+    .order('sent_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Failed to load recent themes: ${error.message}`);
+  return (data ?? []).map((r) => r.theme as string);
+}
+
+/** Idempotency: has this user already been sent since `sinceIso` (e.g. midnight)? */
+export async function wasEmailSentSince(
+  userId: string,
+  sinceIso: string,
+): Promise<boolean> {
+  const serverClient = createServerClient();
+  const { data, error } = await serverClient
+    .from('generated_emails')
+    .select('id')
+    .eq('user_id', userId)
+    .gte('sent_at', sinceIso)
+    .limit(1);
+  if (error) throw new Error(`Failed to check send history: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/** Unsubscribe: cancel a subscriber's subscription by email. */
+export async function cancelSubscriptionByEmail(email: string): Promise<boolean> {
+  const serverClient = createServerClient();
+  const user = await getUserByEmail(email);
+  if (!user) return false;
+  const { error } = await serverClient
+    .from('subscriptions')
+    .update({ status: 'cancelled' })
+    .eq('user_id', user.id);
+  if (error) throw new Error(`Failed to cancel subscription: ${error.message}`);
+  return true;
 }

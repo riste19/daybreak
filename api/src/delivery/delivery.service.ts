@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 
+import { AppConfigService } from "../config/app-config.service";
 import { GenerationService } from "../generation/generation.service";
 import { hasDistress } from "../generation/moderation/moderate-input";
 import type { GenerationResult } from "../generation/domain/types";
@@ -25,6 +26,7 @@ export class DeliveryService {
   constructor(
     private readonly generation: GenerationService,
     @Inject(EMAIL_CLIENT) private readonly email: EmailClient,
+    private readonly config: AppConfigService,
   ) {}
 
   async sendDaily(
@@ -67,7 +69,7 @@ export class DeliveryService {
         theme: result.theme,
         layout,
       },
-      { upgrade },
+      { upgrade, unsubscribeUrl: `${this.config.appUrl}/unsubscribe` },
     );
 
     const receipt = await this.email.send({

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    name: Typecheck, build & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Match api/'s packageManager (pnpm@11.5.2); reads the v9 lockfiles fine.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies (root)
+        run: pnpm install --frozen-lockfile
+
+      # api/ is a separate pnpm package; its deps are needed for the api build and
+      # because the root vitest run also picks up api/**/*.test.ts.
+      - name: Install dependencies (api)
+        run: pnpm install --frozen-lockfile
+        working-directory: api
+
+      # The key gate: Vercel's build has `typescript.ignoreBuildErrors`, so type
+      # errors only surface here. The root tsconfig already excludes api/.
+      - name: Typecheck (frontend)
+        run: pnpm exec tsc --noEmit -p tsconfig.json
+
+      - name: Build api (NestJS)
+        run: pnpm build
+        working-directory: api
+
+      - name: Tests (root + api)
+        run: pnpm test

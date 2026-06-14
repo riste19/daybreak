@@ -47,6 +47,9 @@ export function Footer() {
           <Link href="/login" className="transition-colors hover:text-cream">
             Sign in
           </Link>
+          <Link href="/privacy" className="transition-colors hover:text-cream">
+            Privacy
+          </Link>
         </nav>
       </div>
 

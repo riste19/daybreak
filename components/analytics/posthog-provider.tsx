@@ -5,6 +5,8 @@ import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, type ReactNode } from "react";
 
+import { CookieConsent } from "./cookie-consent";
+
 /**
  * Client-side PostHog setup for product analytics (funnels, autocapture).
  *
@@ -26,6 +28,9 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
         process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       capture_pageview: false, // captured manually below for App Router
       capture_pageleave: true,
+      // GDPR: don't capture anything until the visitor accepts (see CookieConsent).
+      // This suppresses the manual $pageview + autocapture while opted out.
+      opt_out_capturing_by_default: true,
     });
   }, []);
 
@@ -35,6 +40,7 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
         <PostHogPageView />
       </Suspense>
       {children}
+      <CookieConsent />
     </PHProvider>
   );
 }
