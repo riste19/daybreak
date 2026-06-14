@@ -124,48 +124,6 @@ export function OnboardingFlow() {
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
   };
 
-  /**
-   * Persist the subscriber + preferences so the daily-send cron can email them.
-   * Called when they leave the customize screen (layout is final by then).
-   * Non-blocking — a failure here must not break the review/send UX.
-   */
-  const persistSubscription = () => {
-    const resolved = resolveAnswers({ selectedCategories: selected, values });
-    const timezone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    const name =
-      typeof values["universal.name"] === "string"
-        ? values["universal.name"].trim()
-        : "";
-    const note =
-      typeof values["universal.note"] === "string"
-        ? values["universal.note"].trim()
-        : "";
-    const sendTime =
-      typeof values["universal.sendTime"] === "string"
-        ? values["universal.sendTime"]
-        : undefined;
-
-    void fetch("/api/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email.trim(),
-        name: name || null,
-        tone: resolved.params.tone,
-        send_time: sendTime,
-        timezone,
-        primary_goal: goal,
-        custom_notes: note || undefined,
-        preferred_themes: resolved.params.preferredThemes,
-        focus_categories: resolved.params.focusAreas.map((f) => f.id),
-        email_layout: emailLayout,
-      }),
-    }).catch(() => {
-      /* non-blocking */
-    });
-  };
-
   /* ───────────────── Customize → Review (post-questionnaire) ──────────── */
   if (submitted && input) {
     const backToQuestions = () => {
@@ -182,7 +140,6 @@ export function OnboardingFlow() {
               onChange={setEmailLayout}
               onBack={backToQuestions}
               onContinue={() => {
-                persistSubscription();
                 setStage("review");
                 requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
               }}

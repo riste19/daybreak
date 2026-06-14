@@ -16,14 +16,19 @@ import type { CheckoutState, CheckoutValues } from "./checkout-state";
  *
  * When Supabase is configured (service-role env present) a real account is then
  * created (Supabase Auth user + users/subscriptions/user_preferences, see
- * provisionSubscriber); the subscription starts as a 7-day trial. Without keys
+ * provisionSubscriber); the subscription starts as a 3-day trial. Without keys
  * it takes a graceful DEMO path — validates everything, writes nothing.
  *
  * Note: state type + initial state live in ./checkout-state — a "use server"
  * file may only export async functions.
  */
 
-const TRIAL_DAYS = 7;
+// Free 3-day trial. TODO(billing): after the trial, real billing would auto-charge
+// the card collected here and flip the subscription trial→active. Not wired yet —
+// payment is mocked. Until then, the daily cron stops emailing once the trial
+// expires (getActiveSubscribersForSend excludes past-due trials), so an unconverted
+// trial simply goes quiet rather than charging.
+const TRIAL_DAYS = 3;
 // Test cards: 4242 4242 4242 4242 succeeds; this one is declined.
 const TEST_CARD_DECLINE = "4000000000000002";
 

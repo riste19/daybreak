@@ -20,7 +20,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient, getSessionUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/sections/footer";
-import { signOut } from "./actions";
+import { cancelSubscription, signOut } from "./actions";
 
 export const metadata: Metadata = {
   title: "Your dashboard",
@@ -109,9 +109,23 @@ export default async function DashboardPage() {
                     ) : null}
                   </p>
                 </div>
-                <Button asChild variant="outline">
-                  <Link href="/subscribe">Manage plan</Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="outline">
+                    <Link href="/subscribe">Manage plan</Link>
+                  </Button>
+                  {(sub.status === "trial" || sub.status === "active") && (
+                    <form action={cancelSubscription}>
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="text-ink-soft hover:text-destructive"
+                      >
+                        Cancel
+                      </Button>
+                    </form>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-4">
