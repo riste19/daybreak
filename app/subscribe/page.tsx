@@ -48,7 +48,16 @@ const faqs = [
   },
 ];
 
-export default function SubscribePage() {
+export default async function SubscribePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string | string[] }>;
+}) {
+  // The daily email's "Go daily" link carries ?email=<recipient> so checkout
+  // can pre-fill (and auto-open) instead of asking again.
+  const { email } = await searchParams;
+  const defaultEmail = (typeof email === "string" ? email : "").trim().slice(0, 254);
+
   return (
     <main>
       <PageHero
@@ -58,7 +67,7 @@ export default function SubscribePage() {
       />
 
       <section className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
-        <PricingPlans />
+        <PricingPlans defaultEmail={defaultEmail} />
       </section>
 
       {/* Reassurances */}

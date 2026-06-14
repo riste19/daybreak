@@ -50,13 +50,25 @@ export class DeliveryService {
       ? preparedToResult(message, plan.slots)
       : await this.generation.generate({ ...generationInput, outputPlan: plan }, now);
 
-    const { html, text } = renderDailyEmail({
-      subject: result.subject,
-      sections: result.sections,
-      tone: input.tone,
-      theme: result.theme,
-      layout,
-    });
+    // Carry the recipient through the "go daily" link so the subscribe page can
+    // pre-fill (and auto-open) checkout instead of asking for the email again.
+    const upgrade = DEFAULT_BRANDING.upgrade
+      ? {
+          ...DEFAULT_BRANDING.upgrade,
+          url: `${DEFAULT_BRANDING.upgrade.url}?email=${encodeURIComponent(to)}`,
+        }
+      : null;
+
+    const { html, text } = renderDailyEmail(
+      {
+        subject: result.subject,
+        sections: result.sections,
+        tone: input.tone,
+        theme: result.theme,
+        layout,
+      },
+      { upgrade },
+    );
 
     const receipt = await this.email.send({
       to,
