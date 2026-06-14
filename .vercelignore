@@ -1,0 +1,8 @@
+# The NestJS generation engine lives in the top-level `api/` folder — a SEPARATE
+# application, deployed on its own host (Railway/Render). Exclude ONLY that folder
+# from the Vercel (Next.js frontend) build so it isn't type-checked here without
+# its own dependencies.
+#
+# IMPORTANT: the leading slash anchors this to the repo root. A bare `api` would
+# (gitignore-style) also match `app/api/` and delete the Next API routes.
+/api

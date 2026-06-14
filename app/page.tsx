@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ViewTransition } from "react";
 
 import { Hero } from "@/components/sections/hero";
@@ -7,6 +8,13 @@ import { WhyDifferent } from "@/components/sections/why-different";
 import { SampleEmail } from "@/components/sections/sample-email";
 import { FinalCta } from "@/components/sections/final-cta";
 import { Footer } from "@/components/sections/footer";
+
+export const metadata: Metadata = {
+  // Keyword-rich absolute title for the homepage (overrides the layout default);
+  // the description still comes from the root layout (site.description).
+  title: { absolute: "Daybreak — A personalized daily motivational email" },
+  alternates: { canonical: "/" },
+};
 
 export default function Home() {
   return (
