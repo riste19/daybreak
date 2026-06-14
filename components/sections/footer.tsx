@@ -30,6 +30,9 @@ export function Footer() {
           <Link href="/about" className="transition-colors hover:text-cream">
             About
           </Link>
+          <Link href="/blog" className="transition-colors hover:text-cream">
+            Blog
+          </Link>
           <a
             href={site.social.href}
             className="transition-colors hover:text-cream"

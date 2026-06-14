@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { usePostHog } from "posthog-js/react";
 
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/config";
@@ -42,6 +43,7 @@ export function OnboardingFlow() {
   const [emailLayout, setEmailLayout] = React.useState<EmailLayout>(DEFAULT_LAYOUT);
 
   const topRef = React.useRef<HTMLDivElement>(null);
+  const posthog = usePostHog();
 
   // Keep selected categories in schema order so steps + dots are predictable.
   const toggleCategory = (id: string) => {
@@ -90,6 +92,12 @@ export function OnboardingFlow() {
   };
 
   const handleSubmit = () => {
+    // The key funnel conversion: the visitor finished the questionnaire with a
+    // goal + email. (categories/tone are useful breakdown properties.)
+    posthog.capture("onboarding_completed", {
+      categories: selected.length,
+      tone: suggestedTone,
+    });
     // Map answers to the engine's request body. Email/sendTime are delivery
     // metadata and deliberately NOT part of GenerationInput.
     setInput(buildGenerationInput({ selectedCategories: selected, values }));

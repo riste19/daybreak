@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
+  // Treat .mdx as routes/pages so the blog content hub can author in MDX.
+  pageExtensions: ["ts", "tsx", "mdx"],
   // Pin the workspace root to this project. Without it, Turbopack can pick a
   // stray package-lock.json higher up the tree (e.g. in the home directory).
   turbopack: {
@@ -25,4 +28,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withMDX = createMDX({
+  options: {
+    // Turbopack requires remark/rehype plugins as STRING names (it can't receive
+    // JS function options across the Rust boundary) — see the Next MDX guide.
+    remarkPlugins: ["remark-gfm"],
+    rehypePlugins: ["rehype-slug"],
+  },
+});
+
+export default withMDX(nextConfig);
