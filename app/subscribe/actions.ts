@@ -129,7 +129,9 @@ export async function createSubscriberAccount(
       demo: false,
       message: reactivated
         ? `Payment accepted (mock — no real charge). Welcome back — your ${plan.name} ` +
-          `subscription is active again on a fresh ${TRIAL_DAYS}-day trial, sending to ${email}.`
+          (subscription.status === "trial"
+            ? `trial resumes, sending to ${email}.`
+            : `subscription is active again, sending to ${email}.`)
         : `Payment accepted (mock — no real charge). Your ${plan.name} account is ready and ` +
           `your mornings will go to ${email}. Your ${TRIAL_DAYS}-day trial starts now.`,
     };

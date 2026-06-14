@@ -2,7 +2,7 @@
 // All functions use the Supabase client
 
 import { supabase, createServerClient } from './client';
-import type { Json } from './types';
+import type { Json, Database } from './types';
 import type {
   User,
   UserPreferences,
@@ -524,12 +524,9 @@ export async function provisionSubscriber(input: ProvisionInput): Promise<Provis
 
 /**
  * Reactivate an existing subscriber re-subscribing with the same email (after
- * cancelling or letting the trial lapse). The auth user is never re-created; we
- * just flip their subscription back on with a fresh trial window. Existing
- * preferences are kept (the dashboard edits them) — only the lead is re-claimed.
- *
- * TODO(billing/abuse): granting a fresh trial on every re-subscribe is exploitable
- * once real billing lands — gate repeat trials on prior trial usage then.
+ * cancelling or letting the trial lapse). The auth user is never re-created and
+ * existing preferences are kept (the dashboard edits them) — only the subscription
+ * is re-enabled and the lead re-claimed.
  */
 async function reactivateExistingSubscriber(
   email: string,
@@ -560,8 +557,13 @@ async function reactivateExistingSubscriber(
 }
 
 /**
- * Flip a user's subscription back to a fresh trial. Upserts by the unique user_id,
- * so it works whether or not a row already exists. Service-role.
+ * Re-enable a returning subscriber WITHOUT handing out another free trial. The
+ * trial clock is fixed at first signup and never reset here, so a cancel →
+ * re-subscribe loop can't farm endless free trials:
+ *   • still inside the ORIGINAL trial window → resume the trial (same end date);
+ *   • trial already elapsed (or no prior row → genuine first time) → go straight to
+ *     'active', i.e. paid immediately (the card was collected at checkout).
+ * Upserts by the unique user_id. Service-role.
  */
 export async function reactivateSubscription(
   userId: string,
@@ -570,23 +572,48 @@ export async function reactivateSubscription(
 ): Promise<Subscription> {
   const admin = createServerClient();
   const now = new Date();
-  const trialEndsAt = new Date(
-    now.getTime() + trialDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+
+  const { data: existing } = await admin
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  let payload: Database['public']['Tables']['subscriptions']['Insert'];
+  if (!existing) {
+    // No prior subscription — a genuine first trial.
+    payload = {
+      user_id: userId,
+      status: 'trial',
+      plan,
+      trial_started_at: now.toISOString(),
+      trial_ends_at: new Date(
+        now.getTime() + trialDays * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      subscription_ends_at: null,
+    };
+  } else if (existing.trial_ends_at && new Date(existing.trial_ends_at) > now) {
+    // Still within the original trial window → resume it (don't extend/reset).
+    payload = {
+      user_id: userId,
+      status: 'trial',
+      plan,
+      subscription_ends_at: null,
+    };
+  } else {
+    // Trial already used → re-subscribe is paid immediately, no new free time.
+    payload = {
+      user_id: userId,
+      status: 'active',
+      plan,
+      subscription_started_at: now.toISOString(),
+      subscription_ends_at: null,
+    };
+  }
 
   const { data, error } = await admin
     .from('subscriptions')
-    .upsert(
-      {
-        user_id: userId,
-        status: 'trial',
-        plan,
-        trial_started_at: now.toISOString(),
-        trial_ends_at: trialEndsAt,
-        subscription_ends_at: null,
-      },
-      { onConflict: 'user_id' },
-    )
+    .upsert(payload, { onConflict: 'user_id' })
     .select()
     .single();
 
