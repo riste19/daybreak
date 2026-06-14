@@ -3,6 +3,7 @@ import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 
 import { site } from "@/lib/config";
+import { PostHogProvider } from "@/components/analytics/posthog-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -93,7 +94,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );
