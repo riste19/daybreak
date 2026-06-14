@@ -88,6 +88,7 @@ export type Database = {
           preferred_themes: Json;
           focus_categories: Json;
           email_layout: Json; // customizable email layout (migration 003)
+          answers: Json; // raw onboarding answer map (migration 004)
           timezone: string;
           created_at: string;
           updated_at: string;
@@ -102,6 +103,7 @@ export type Database = {
           preferred_themes?: Json;
           focus_categories?: Json;
           email_layout?: Json;
+          answers?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -116,6 +118,7 @@ export type Database = {
           preferred_themes?: Json;
           focus_categories?: Json;
           email_layout?: Json;
+          answers?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -173,6 +176,57 @@ export type Database = {
             referencedColumns: ['id'];
           }
         ];
+      };
+      trial_sends: {
+        Row: {
+          id: string;
+          email: string;
+          answers: Json;
+          focus_categories: Json;
+          primary_goal: string | null;
+          tone: string | null;
+          subject: string | null;
+          theme: string | null;
+          used_fallback: boolean | null;
+          status: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id: string | null;
+          created_at: string;
+          sent_at: string | null;
+          claimed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          answers?: Json;
+          focus_categories?: Json;
+          primary_goal?: string | null;
+          tone?: string | null;
+          subject?: string | null;
+          theme?: string | null;
+          used_fallback?: boolean | null;
+          status?: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          answers?: Json;
+          focus_categories?: Json;
+          primary_goal?: string | null;
+          tone?: string | null;
+          subject?: string | null;
+          theme?: string | null;
+          used_fallback?: boolean | null;
+          status?: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Relationships: [];
       };
       waitlist: {
         Row: {

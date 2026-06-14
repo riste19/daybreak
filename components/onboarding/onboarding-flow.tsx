@@ -12,6 +12,7 @@ import { resolveAnswers, type AnswerValue } from "@/lib/onboarding/resolveAnswer
 import { buildGenerationInput, type GenerationInput } from "@/lib/onboarding/buildGenerationInput";
 import { DEFAULT_LAYOUT, type EmailLayout } from "@/lib/email/layout";
 import { isValidEmail } from "@/lib/validation";
+import { captureTrialLead } from "@/app/start/actions";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
@@ -44,6 +45,14 @@ export function OnboardingFlow() {
 
   const topRef = React.useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
+
+  // Funnel: record that the questionnaire was opened (once per mount).
+  const viewed = React.useRef(false);
+  React.useEffect(() => {
+    if (viewed.current) return;
+    viewed.current = true;
+    posthog.capture("start_viewed");
+  }, [posthog]);
 
   // Keep selected categories in schema order so steps + dots are predictable.
   const toggleCategory = (id: string) => {
@@ -97,6 +106,15 @@ export function OnboardingFlow() {
     posthog.capture("onboarding_completed", {
       categories: selected.length,
       tone: suggestedTone,
+    });
+    // Capture the email + answers as a pre-registration lead (fire-and-forget;
+    // server no-ops without Supabase). Lets us see trial→paid conversion and
+    // pre-fill the account if this email subscribes later.
+    void captureTrialLead({
+      email: email.trim(),
+      selectedCategories: selected,
+      values,
+      distinctId: posthog.get_distinct_id?.() ?? null,
     });
     // Map answers to the engine's request body. Email/sendTime are delivery
     // metadata and deliberately NOT part of GenerationInput.

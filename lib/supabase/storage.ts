@@ -3,7 +3,16 @@
 
 import { supabase, createServerClient } from './client';
 import type { Json } from './types';
-import type { User, UserPreferences, GeneratedEmail, Subscription, WaitlistEntry } from '@/lib/types/database';
+import type {
+  User,
+  UserPreferences,
+  GeneratedEmail,
+  Subscription,
+  WaitlistEntry,
+  TrialSend,
+  OnboardingAnswer,
+} from '@/lib/types/database';
+import { answersToPreferences } from '@/lib/onboarding/preferences';
 
 // ============================================================================
 // WAITLIST
@@ -318,6 +327,102 @@ export async function getUserWithRecentEmails(userId: string, limit: number = 5)
 }
 
 // ============================================================================
+// TRIAL SENDS (pre-registration leads — service-role only, bypasses RLS)
+// ============================================================================
+
+export interface TrialLeadInput {
+  email: string;
+  /** Raw onboarding answer snapshot (email/name stripped — see preferences.ts). */
+  answers: Record<string, OnboardingAnswer>;
+  focusCategories: string[];
+  primaryGoal?: string | null;
+  tone?: string | null;
+  /** PostHog distinct id, to stitch this DB lead to the funnel events. */
+  posthogDistinctId?: string | null;
+}
+
+/** Fetch a trial lead by email (service role). */
+export async function getTrialLead(email: string): Promise<TrialSend | null> {
+  const admin = createServerClient();
+  const { data, error } = await admin
+    .from('trial_sends')
+    .select('*')
+    .eq('email', email.trim().toLowerCase())
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to fetch trial lead: ${error.message}`);
+  return (data as TrialSend | null) ?? null;
+}
+
+/**
+ * Capture (or refresh) a pre-registration lead: someone who finished the no-login
+ * questionnaire but hasn't subscribed. Upserts by email and never downgrades a row
+ * that has already converted ('claimed') or been delivered to ('sent').
+ */
+export async function recordTrialLead(input: TrialLeadInput): Promise<void> {
+  const admin = createServerClient();
+  const email = input.email.trim().toLowerCase();
+
+  const existing = await getTrialLead(email);
+  if (existing?.status === 'claimed') return; // already a subscriber — leave it
+
+  const { error } = await admin.from('trial_sends').upsert(
+    {
+      email,
+      answers: input.answers,
+      focus_categories: input.focusCategories,
+      primary_goal: input.primaryGoal ?? null,
+      tone: input.tone ?? null,
+      posthog_distinct_id: input.posthogDistinctId ?? null,
+      status: existing?.status === 'sent' ? 'sent' : 'lead',
+    },
+    { onConflict: 'email' },
+  );
+
+  if (error) throw new Error(`Failed to record trial lead: ${error.message}`);
+}
+
+/**
+ * Mark that a one-off email was actually delivered to a trial email. Upserts so a
+ * send with no prior lead row still lands; preserves a 'claimed' status.
+ */
+export async function recordTrialSend(input: {
+  email: string;
+  subject: string;
+  theme: string;
+  usedFallback: boolean;
+}): Promise<void> {
+  const admin = createServerClient();
+  const email = input.email.trim().toLowerCase();
+  const existing = await getTrialLead(email);
+
+  const { error } = await admin.from('trial_sends').upsert(
+    {
+      email,
+      subject: input.subject,
+      theme: input.theme,
+      used_fallback: input.usedFallback,
+      sent_at: new Date().toISOString(),
+      status: existing?.status === 'claimed' ? 'claimed' : 'sent',
+    },
+    { onConflict: 'email' },
+  );
+
+  if (error) throw new Error(`Failed to record trial send: ${error.message}`);
+}
+
+/** Mark a trial lead as converted — called when that email subscribes. No-op if absent. */
+export async function claimTrialLead(email: string): Promise<void> {
+  const admin = createServerClient();
+  const { error } = await admin
+    .from('trial_sends')
+    .update({ status: 'claimed', claimed_at: new Date().toISOString() })
+    .eq('email', email.trim().toLowerCase());
+
+  if (error) throw new Error(`Failed to claim trial lead: ${error.message}`);
+}
+
+// ============================================================================
 // ACCOUNT PROVISIONING
 // ============================================================================
 
@@ -331,6 +436,7 @@ export type ProvisionPreferences = Partial<
     | 'custom_notes'
     | 'focus_categories'
     | 'preferred_themes'
+    | 'answers'
     | 'timezone'
   >
 >;
@@ -372,10 +478,17 @@ export async function provisionSubscriber(input: ProvisionInput): Promise<Provis
   const admin = createServerClient();
   const email = input.email.trim().toLowerCase();
 
+  // Pre-fill from a prior trial: if this email tried /start before subscribing,
+  // reuse the answers they already gave (no re-entry) and seed their preferences.
+  const { preferences: leadPreferences, name: leadName } =
+    await preferencesFromTrialLead(email);
+  const name = input.name ?? leadName ?? null;
+  const preferences = input.preferences ?? leadPreferences ?? {};
+
   const { data: created, error: authError } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { name: input.name ?? null, plan: input.plan },
+    user_metadata: { name, plan: input.plan },
   });
 
   if (authError || !created?.user) {
@@ -388,17 +501,55 @@ export async function provisionSubscriber(input: ProvisionInput): Promise<Provis
 
   const authId = created.user.id;
   try {
-    const user = await createUser(authId, email, input.name ?? null);
+    const user = await createUser(authId, email, name);
     const subscription = await createTrialSubscription(
       user.id,
       input.trialDays ?? 7,
       input.plan,
     );
-    const preferences = await createUserPreferences(user.id, input.preferences ?? {});
-    return { user, subscription, preferences };
+    const prefs = await createUserPreferences(user.id, preferences);
+    // Mark the lead converted (best-effort — never fails the signup).
+    await claimTrialLead(email).catch(() => {});
+    return { user, subscription, preferences: prefs };
   } catch (err) {
     // Best-effort rollback so a half-provisioned account doesn't linger.
     await admin.auth.admin.deleteUser(authId).catch(() => {});
     throw err;
   }
+}
+
+/**
+ * Look up a trial lead and derive signup preferences + display name from the
+ * answers they already gave. Best-effort: any failure (incl. no lead) yields
+ * empty values so provisioning proceeds normally.
+ */
+async function preferencesFromTrialLead(
+  email: string,
+): Promise<{ preferences: ProvisionPreferences | null; name: string | null }> {
+  let lead: TrialSend | null = null;
+  try {
+    lead = await getTrialLead(email);
+  } catch {
+    return { preferences: null, name: null };
+  }
+  if (!lead) return { preferences: null, name: null };
+
+  const derived = answersToPreferences({
+    selectedCategories: lead.focus_categories ?? [],
+    values: lead.answers ?? {},
+  });
+
+  return {
+    preferences: {
+      tone: derived.tone,
+      send_time: derived.send_time,
+      timezone: derived.timezone,
+      primary_goal: derived.primary_goal,
+      custom_notes: derived.custom_notes,
+      focus_categories: derived.focus_categories,
+      preferred_themes: derived.preferred_themes,
+      answers: derived.answers,
+    },
+    name: derived.name,
+  };
 }

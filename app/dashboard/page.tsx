@@ -15,6 +15,7 @@ import {
 import { site } from "@/lib/config";
 import { getPlan } from "@/lib/pricing";
 import { getCategory } from "@/lib/onboarding/onboarding-schema";
+import { formatSendTime } from "@/lib/onboarding/preferences";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient, getSessionUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -25,12 +26,6 @@ export const metadata: Metadata = {
   title: "Your dashboard",
   description: "Manage your Daybreak subscription and morning email settings.",
   robots: { index: false, follow: false },
-};
-
-const SEND_TIME_LABELS: Record<string, string> = {
-  early: "6:00am",
-  dawn: "7:00am",
-  mid_morning: "8:00am",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -140,9 +135,14 @@ export default async function DashboardPage() {
                   <span className="capitalize">{prefs.tone}</span>
                 </Field>
                 <Field label="Delivery">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="size-3.5 text-primary" aria-hidden />
-                    {SEND_TIME_LABELS[prefs.send_time] ?? prefs.send_time}
+                  <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="size-3.5 text-primary" aria-hidden />
+                      {formatSendTime(prefs.send_time)}
+                    </span>
+                    <span className="text-ink-soft">
+                      {(prefs.timezone || "UTC").replaceAll("_", " ")}
+                    </span>
                   </span>
                 </Field>
                 <Field label="Focusing on">
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
             )}
             <div className="mt-5">
               <Button asChild variant="ghost" size="sm">
-                <Link href="/start" transitionTypes={["nav-forward"]}>
+                <Link href="/dashboard/edit" transitionTypes={["nav-forward"]}>
                   <Pencil className="size-4" aria-hidden />
                   Edit my mornings
                 </Link>

@@ -101,7 +101,7 @@ User-customizable email settings (one per user)
 | `id` | UUID | Primary key |
 | `user_id` | UUID | Links to user (unique) |
 | `tone` | VARCHAR(20) | Email tone (`gentle`, `direct`, `playful`, `stoic`) |
-| `send_time` | VARCHAR(20) | Delivery time (`early`, `dawn`, `mid_morning`) |
+| `send_time` | VARCHAR(20) | Local delivery time, `HH:MM` 24h, e.g. `07:00` (migration 006) |
 | `primary_goal` | TEXT | Current main goal |
 | `custom_notes` | TEXT | Optional closing note |
 | `preferred_themes` | JSONB | Array of `{theme, weight}` objects |

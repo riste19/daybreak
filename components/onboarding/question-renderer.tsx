@@ -164,9 +164,154 @@ function QuestionControl({
       );
     }
 
+    case "time": {
+      const text = typeof value === "string" ? value : "";
+      return (
+        <TimeField
+          value={text}
+          ariaLabel={question.label}
+          onChange={(v) => onChange(v || undefined)}
+        />
+      );
+    }
+
+    case "timezone": {
+      const text = typeof value === "string" ? value : "";
+      return (
+        <TimezoneField
+          value={text}
+          ariaLabel={question.label}
+          onChange={(v) => onChange(v || undefined)}
+        />
+      );
+    }
+
     default:
       return null;
   }
+}
+
+/* ─────────────────────────────── Time field ─────────────────────────────── */
+
+/** Native time picker (any minute). Seeds a friendly 7:00am default when unset. */
+function TimeField({
+  value,
+  ariaLabel,
+  onChange,
+}: {
+  value: string;
+  ariaLabel: string;
+  onChange: (value: string) => void;
+}) {
+  React.useEffect(() => {
+    if (!value) onChange("07:00");
+    // Seed once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Input
+      type="time"
+      value={value}
+      aria-label={ariaLabel}
+      onChange={(e) => onChange(e.target.value)}
+      className="max-w-44"
+    />
+  );
+}
+
+/* ───────────────────────────── Timezone field ───────────────────────────── */
+
+const FALLBACK_TIMEZONES = [
+  "UTC",
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Europe/Skopje",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Sao_Paulo",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+
+function detectTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+function supportedTimezones(): string[] {
+  const sv = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
+    .supportedValuesOf;
+  if (typeof sv === "function") {
+    try {
+      const list = sv("timeZone");
+      if (Array.isArray(list) && list.length) return list;
+    } catch {
+      /* fall through to the curated list */
+    }
+  }
+  return FALLBACK_TIMEZONES;
+}
+
+/**
+ * IANA timezone select. Defaults to the browser's zone (set in an effect, so the
+ * server-rendered markup matches — no hydration mismatch). The full supported zone
+ * list comes from Intl, with a curated fallback for older runtimes.
+ */
+function TimezoneField({
+  value,
+  ariaLabel,
+  onChange,
+}: {
+  value: string;
+  ariaLabel: string;
+  onChange: (value: string) => void;
+}) {
+  const zones = React.useMemo(() => {
+    const list = supportedTimezones();
+    const out = list.includes("UTC") ? [...list] : ["UTC", ...list];
+    // Keep an unrecognized stored value selectable.
+    if (value && !out.includes(value)) out.unshift(value);
+    return out;
+  }, [value]);
+
+  React.useEffect(() => {
+    if (!value) onChange(detectTimezone());
+    // Seed the detected zone once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <select
+      value={value}
+      aria-label={ariaLabel}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "h-11 w-full max-w-md rounded-2xl border border-border bg-card px-3 text-sm text-ink",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      )}
+    >
+      {!value && (
+        <option value="" disabled>
+          Detecting your time zone…
+        </option>
+      )}
+      {zones.map((z) => (
+        <option key={z} value={z}>
+          {z.replaceAll("_", " ")}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 /* ───────────────────────────── Email field ──────────────────────────── */
