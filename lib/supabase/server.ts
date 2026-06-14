@@ -60,3 +60,8 @@ export const getSessionUser = cache(async (): Promise<AuthUser | null> => {
   if (error) return null;
   return data.user;
 });
+
+/** Convenience: is there a signed-in user this request? (memoized via getSessionUser) */
+export async function isLoggedIn(): Promise<boolean> {
+  return Boolean(await getSessionUser());
+}
