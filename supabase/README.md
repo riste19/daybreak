@@ -31,20 +31,24 @@ supabase db push
 
 ### 3. Get Connection Details
 
-From the Supabase dashboard:
-
-1. Go to **Settings > Database > Connection string**
-2. Copy the **URI** (for Node.js/Postgres client)
-3. Add to your `.env.local`:
+From the Supabase dashboard (**Settings > API**), add these to your `.env.local`
+at the repo root. These are the exact names the app reads (see
+`lib/supabase/client.ts`):
 
 ```env
-DATABASE_URL=postgresql://postgres:PASSWORD@HOST:5432/postgres
-SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-SUPABASE_ANON_KEY=YOUR_ANON_KEY
+# Browser client (anon key, respects RLS) — must be NEXT_PUBLIC_*
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+
+# Server-only (service role, bypasses RLS) — NEVER expose to the browser.
+# Required for account creation (provisionSubscriber / the /subscribe checkout).
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 ```
 
-(Find SUPABASE_URL and keys in **Settings > API**)
+Until `SUPABASE_SERVICE_ROLE_KEY` is set, account creation runs in a graceful
+**demo mode** (it validates input but writes nothing). With the keys present, the
+`/subscribe` checkout creates a real Supabase Auth user plus the `users`,
+`subscriptions`, and `user_preferences` rows.
 
 ### 4. Set Up Supabase Auth (Optional for Now)
 

@@ -2,20 +2,31 @@
 
 import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { getPlan, type BillingPeriod } from "@/lib/pricing";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/client";
+import { AccountExistsError, provisionSubscriber } from "@/lib/supabase/storage";
 
 /**
- * MOCK subscription flow.
+ * Subscriber account creation.
  *
- * This is the first of the two "next steps": it stands in for a real checkout
- * (Stripe et al.) and, later, account creation. Right now it only validates the
- * selection and the email, logs it, and returns a success contract — no payment,
- * no `users`/`subscriptions` row written yet. When checkout + auth land, swap the
- * body of this action for the real thing; the form and the success shape stay.
+ * When Supabase is configured (service-role env present) this creates a real
+ * account: a Supabase Auth user plus the `users`, `subscriptions`, and
+ * `user_preferences` rows (see provisionSubscriber). Payment is still mocked —
+ * the subscription starts as a 7-day trial until real billing converts it.
+ *
+ * Without Supabase keys (e.g. local dev), it takes a graceful DEMO path: it
+ * validates everything but writes nothing, so the flow can still be exercised.
  */
 
 export type CheckoutState =
   | { status: "idle" }
-  | { status: "success"; planName: string; email: string; message: string }
+  | {
+      status: "success";
+      planName: string;
+      email: string;
+      message: string;
+      /** True when no account was actually written (Supabase not configured). */
+      demo: boolean;
+    }
   | {
       status: "error";
       message: string;
@@ -25,11 +36,13 @@ export type CheckoutState =
 
 export const initialCheckoutState: CheckoutState = { status: "idle" };
 
+const TRIAL_DAYS = 7;
+
 function isBillingPeriod(value: string): value is BillingPeriod {
   return value === "monthly" || value === "annual";
 }
 
-export async function startMockCheckout(
+export async function createSubscriberAccount(
   _prev: CheckoutState,
   formData: FormData,
 ): Promise<CheckoutState> {
@@ -54,17 +67,59 @@ export async function startMockCheckout(
 
   const billing = isBillingPeriod(period) ? period : "monthly";
 
-  // No real checkout or account yet — log so the selection is visible in dev.
-  // NEXT STEPS: create the Supabase Auth user + a `users` row, open a real
-  // checkout session, and on success write the `subscriptions` row (plan = id).
-  console.info("[subscribe] mock checkout", { planId: plan.id, billing, email });
+  // No Supabase keys → graceful demo (validates, writes nothing). Lets the flow
+  // be tried locally without a database.
+  if (!isSupabaseAdminConfigured()) {
+    console.info("[subscribe] account (demo — Supabase not configured)", {
+      planId: plan.id,
+      billing,
+      email,
+    });
+    return {
+      status: "success",
+      planName: plan.name,
+      email,
+      demo: true,
+      message:
+        `Demo mode: Supabase isn't configured, so no account was created. ` +
+        `With keys set, ${email} would get a ${plan.name} account.`,
+    };
+  }
 
-  return {
-    status: "success",
-    planName: plan.name,
-    email,
-    message:
-      `You're set for ${plan.name} (mock — no payment taken). ` +
-      `We've noted ${email}; real checkout and your account are the next step.`,
-  };
+  try {
+    const { subscription } = await provisionSubscriber({
+      email,
+      plan: plan.id,
+      trialDays: TRIAL_DAYS,
+    });
+    console.info("[subscribe] account created", {
+      planId: plan.id,
+      billing,
+      email,
+      subscriptionId: subscription.id,
+    });
+    return {
+      status: "success",
+      planName: plan.name,
+      email,
+      demo: false,
+      message:
+        `Your ${plan.name} account is ready — your mornings will go to ${email}. ` +
+        `Your ${TRIAL_DAYS}-day trial starts now; we'll only charge you after it ends.`,
+    };
+  } catch (err) {
+    if (err instanceof AccountExistsError) {
+      return {
+        status: "error",
+        message: `Looks like ${email} already has an account — try signing in instead.`,
+        email,
+      };
+    }
+    console.error("[subscribe] account creation failed", err);
+    return {
+      status: "error",
+      message: "Something went wrong creating your account. Please try again.",
+      email,
+    };
+  }
 }

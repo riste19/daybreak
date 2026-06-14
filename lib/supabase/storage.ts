@@ -2,6 +2,7 @@
 // All functions use the Supabase client
 
 import { supabase, createServerClient } from './client';
+import type { Json } from './types';
 import type { User, UserPreferences, GeneratedEmail, Subscription, WaitlistEntry } from '@/lib/types/database';
 
 // ============================================================================
@@ -98,12 +99,14 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 // ============================================================================
 
 /**
- * Create a trial subscription for a user
- * (Called after first email is generated)
+ * Create a trial subscription for a user (called when an account is provisioned).
+ * `plan` is the chosen plan id (e.g. `free_trial`, `daily`); paid plans still
+ * begin as a trial until real billing converts them to `active`.
  */
 export async function createTrialSubscription(
   userId: string,
-  trialDays: number = 7
+  trialDays: number = 7,
+  plan: string = 'free_trial'
 ): Promise<Subscription> {
   const serverClient = createServerClient();
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
@@ -114,7 +117,7 @@ export async function createTrialSubscription(
       {
         user_id: userId,
         status: 'trial',
-        plan: 'free_trial',
+        plan,
         trial_ends_at: trialEndsAt,
       },
     ])
@@ -222,7 +225,7 @@ export async function saveGeneratedEmail(
     body: string;
     theme: string;
     used_fallback: boolean;
-    generation_input: Record<string, any>;
+    generation_input: Record<string, Json>;
   }
 ): Promise<GeneratedEmail> {
   const serverClient = createServerClient();
@@ -312,4 +315,90 @@ export async function getUserWithRecentEmails(userId: string, limit: number = 5)
 
   if (error) throw new Error(`Failed to fetch user with emails: ${error.message}`);
   return data;
+}
+
+// ============================================================================
+// ACCOUNT PROVISIONING
+// ============================================================================
+
+/** Editable preferences captured at signup (all optional; the DB fills defaults). */
+export type ProvisionPreferences = Partial<
+  Pick<
+    UserPreferences,
+    | 'tone'
+    | 'send_time'
+    | 'primary_goal'
+    | 'custom_notes'
+    | 'focus_categories'
+    | 'preferred_themes'
+    | 'timezone'
+  >
+>;
+
+export interface ProvisionInput {
+  email: string;
+  name?: string | null;
+  /** Chosen plan id (becomes subscriptions.plan). */
+  plan: string;
+  /** Trial length in days. */
+  trialDays?: number;
+  preferences?: ProvisionPreferences;
+}
+
+export interface ProvisionResult {
+  user: User;
+  subscription: Subscription;
+  preferences: UserPreferences;
+}
+
+/** Thrown when an account already exists for the email — callers map this to a friendly message. */
+export class AccountExistsError extends Error {
+  constructor(public readonly email: string) {
+    super(`An account already exists for ${email}.`);
+    this.name = 'AccountExistsError';
+  }
+}
+
+/**
+ * Create a full subscriber account end to end: a Supabase Auth user, then the
+ * `users`, `subscriptions`, and `user_preferences` rows (all server-side via the
+ * service role). If any row insert fails, the just-created auth user is removed
+ * so a half-provisioned account doesn't linger (FK cascades clear the rest).
+ *
+ * Auth is passwordless: the user is created already-confirmed and signs in later
+ * via magic link. Requires the service-role env — guard with isSupabaseAdminConfigured().
+ */
+export async function provisionSubscriber(input: ProvisionInput): Promise<ProvisionResult> {
+  const admin = createServerClient();
+  const email = input.email.trim().toLowerCase();
+
+  const { data: created, error: authError } = await admin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { name: input.name ?? null, plan: input.plan },
+  });
+
+  if (authError || !created?.user) {
+    const message = authError?.message ?? 'unknown error';
+    if (/already (been )?regist|already exist|exists/i.test(message)) {
+      throw new AccountExistsError(email);
+    }
+    throw new Error(`Could not create auth user: ${message}`);
+  }
+
+  const authId = created.user.id;
+  try {
+    const user = await createUser(authId, email, input.name ?? null);
+    const subscription = await createTrialSubscription(
+      user.id,
+      input.trialDays ?? 7,
+      input.plan,
+    );
+    const preferences = await createUserPreferences(user.id, input.preferences ?? {});
+    return { user, subscription, preferences };
+  } catch (err) {
+    // Best-effort rollback so a half-provisioned account doesn't linger.
+    await admin.auth.admin.deleteUser(authId).catch(() => {});
+    throw err;
+  }
 }

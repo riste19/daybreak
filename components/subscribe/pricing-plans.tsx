@@ -18,8 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  createSubscriberAccount,
   initialCheckoutState,
-  startMockCheckout,
 } from "@/app/subscribe/actions";
 
 /**
@@ -249,7 +249,7 @@ function MockCheckout({
   onClose: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
-    startMockCheckout,
+    createSubscriberAccount,
     initialCheckoutState,
   );
 
@@ -274,6 +274,13 @@ function MockCheckout({
             Back to plans
           </Button>
         </div>
+        <p className="mt-5 text-sm text-ink-soft">
+          Manage it anytime —{" "}
+          <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+            sign in
+          </Link>{" "}
+          with your email.
+        </p>
       </div>
     );
   }
@@ -352,7 +359,7 @@ function MockCheckout({
 
       <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-ink-soft">
         <Sparkles className="size-3.5 text-primary" aria-hidden />
-        Demo checkout — no payment is taken and no account is created yet.
+        Payment is mocked — your account starts on a 7-day free trial. Cancel anytime.
       </p>
     </form>
   );
