@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { initialLoginState, sendMagicLink } from "@/app/login/actions";
+import { sendMagicLink } from "@/app/login/actions";
+import { initialLoginState } from "@/app/login/login-state";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(sendMagicLink, initialLoginState);

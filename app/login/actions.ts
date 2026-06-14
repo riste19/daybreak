@@ -5,20 +5,17 @@ import { headers } from "next/headers";
 import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { LoginState } from "./login-state";
 
 /**
  * Passwordless sign-in: email the user a magic link. We never reveal whether an
  * account exists (to prevent enumeration) — any send issue is logged server-side
  * but the UI always shows "check your inbox". `shouldCreateUser: false` keeps
  * /login sign-in only; accounts are created via the /subscribe checkout.
+ *
+ * Note: state type + initial state live in ./login-state — a "use server" file
+ * may only export async functions.
  */
-
-export type LoginState =
-  | { status: "idle" }
-  | { status: "sent"; email: string; demo: boolean }
-  | { status: "error"; message: string; email: string };
-
-export const initialLoginState: LoginState = { status: "idle" };
 
 export async function sendMagicLink(
   _prev: LoginState,

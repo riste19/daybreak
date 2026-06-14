@@ -9,11 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  initialContactState,
-  submitContactMessage,
-  type ContactState,
-} from "@/app/contact/actions";
+import { submitContactMessage } from "@/app/contact/actions";
+import { initialContactState } from "@/app/contact/contact-state";
 
 export function ContactForm() {
   const [state, formAction, pending] = useActionState(

@@ -80,14 +80,14 @@ export interface EmailBranding {
 export const DEFAULT_BRANDING: EmailBranding = {
   productName: "Daybreak",
   tagline: "A fresh, personal nudge in your inbox every morning.",
-  url: "https://daybreak.email",
+  url: "https://localhost:3000",
   personalNoteLabel: "A note from you",
   footerNote: "You're receiving this because you asked for one good morning email a day.",
-  unsubscribeUrl: "https://daybreak.email/unsubscribe",
+  unsubscribeUrl: "https://localhost:3000/unsubscribe",
   upgrade: {
     note: "Loving your mornings? Make them daily — your time, your tone, your own email layout.",
     label: "Go daily",
-    url: "https://daybreak.email/subscribe",
+    url: "https://localhost:3000/subscribe",
   },
   colors: {
     page: "#f6ecdd", // cream-deep

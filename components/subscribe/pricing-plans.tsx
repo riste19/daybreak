@@ -17,10 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  createSubscriberAccount,
-  initialCheckoutState,
-} from "@/app/subscribe/actions";
+import { createSubscriberAccount } from "@/app/subscribe/actions";
+import { initialCheckoutState } from "@/app/subscribe/checkout-state";
 
 /**
  * The pricing surface: a monthly/annual toggle and the plan cards, rendered

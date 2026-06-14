@@ -4,6 +4,7 @@ import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { getPlan, type BillingPeriod } from "@/lib/pricing";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/client";
 import { AccountExistsError, provisionSubscriber } from "@/lib/supabase/storage";
+import type { CheckoutState } from "./checkout-state";
 
 /**
  * Subscriber account creation.
@@ -15,26 +16,10 @@ import { AccountExistsError, provisionSubscriber } from "@/lib/supabase/storage"
  *
  * Without Supabase keys (e.g. local dev), it takes a graceful DEMO path: it
  * validates everything but writes nothing, so the flow can still be exercised.
+ *
+ * Note: state type + initial state live in ./checkout-state — a "use server"
+ * file may only export async functions.
  */
-
-export type CheckoutState =
-  | { status: "idle" }
-  | {
-      status: "success";
-      planName: string;
-      email: string;
-      message: string;
-      /** True when no account was actually written (Supabase not configured). */
-      demo: boolean;
-    }
-  | {
-      status: "error";
-      message: string;
-      /** Echo back the typed email so the form can repopulate after an error. */
-      email: string;
-    };
-
-export const initialCheckoutState: CheckoutState = { status: "idle" };
 
 const TRIAL_DAYS = 7;
 
