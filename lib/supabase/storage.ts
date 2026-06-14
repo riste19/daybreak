@@ -455,6 +455,8 @@ export interface ProvisionResult {
   user: User;
   subscription: Subscription;
   preferences: UserPreferences;
+  /** True when an existing account was reactivated rather than newly created. */
+  reactivated: boolean;
 }
 
 /** Thrown when an account already exists for the email — callers map this to a friendly message. */
@@ -493,8 +495,10 @@ export async function provisionSubscriber(input: ProvisionInput): Promise<Provis
 
   if (authError || !created?.user) {
     const message = authError?.message ?? 'unknown error';
+    // Existing account → reactivate (e.g. a cancelled / lapsed subscriber
+    // re-subscribing) instead of erroring.
     if (/already (been )?regist|already exist|exists/i.test(message)) {
-      throw new AccountExistsError(email);
+      return reactivateExistingSubscriber(email, input.plan, input.trialDays ?? 3);
     }
     throw new Error(`Could not create auth user: ${message}`);
   }
@@ -504,18 +508,90 @@ export async function provisionSubscriber(input: ProvisionInput): Promise<Provis
     const user = await createUser(authId, email, name);
     const subscription = await createTrialSubscription(
       user.id,
-      input.trialDays ?? 7,
+      input.trialDays ?? 3,
       input.plan,
     );
     const prefs = await createUserPreferences(user.id, preferences);
     // Mark the lead converted (best-effort — never fails the signup).
     await claimTrialLead(email).catch(() => {});
-    return { user, subscription, preferences: prefs };
+    return { user, subscription, preferences: prefs, reactivated: false };
   } catch (err) {
     // Best-effort rollback so a half-provisioned account doesn't linger.
     await admin.auth.admin.deleteUser(authId).catch(() => {});
     throw err;
   }
+}
+
+/**
+ * Reactivate an existing subscriber re-subscribing with the same email (after
+ * cancelling or letting the trial lapse). The auth user is never re-created; we
+ * just flip their subscription back on with a fresh trial window. Existing
+ * preferences are kept (the dashboard edits them) — only the lead is re-claimed.
+ *
+ * TODO(billing/abuse): granting a fresh trial on every re-subscribe is exploitable
+ * once real billing lands — gate repeat trials on prior trial usage then.
+ */
+async function reactivateExistingSubscriber(
+  email: string,
+  plan: string,
+  trialDays: number,
+): Promise<ProvisionResult> {
+  const existing = await getUserByEmail(email);
+  if (!existing) {
+    // Auth user exists but no public `users` row — a rare half-provisioned state
+    // we can't safely resolve here. Surface the friendly "already exists" message.
+    throw new AccountExistsError(email);
+  }
+
+  const subscription = await reactivateSubscription(existing.id, trialDays, plan);
+
+  const admin = createServerClient();
+  const { data: prefRow } = await admin
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', existing.id)
+    .maybeSingle();
+  const preferences =
+    (prefRow as UserPreferences | null) ??
+    (await createUserPreferences(existing.id, {}));
+
+  await claimTrialLead(email).catch(() => {});
+  return { user: existing, subscription, preferences, reactivated: true };
+}
+
+/**
+ * Flip a user's subscription back to a fresh trial. Upserts by the unique user_id,
+ * so it works whether or not a row already exists. Service-role.
+ */
+export async function reactivateSubscription(
+  userId: string,
+  trialDays: number = 3,
+  plan: string = 'free_trial',
+): Promise<Subscription> {
+  const admin = createServerClient();
+  const now = new Date();
+  const trialEndsAt = new Date(
+    now.getTime() + trialDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { data, error } = await admin
+    .from('subscriptions')
+    .upsert(
+      {
+        user_id: userId,
+        status: 'trial',
+        plan,
+        trial_started_at: now.toISOString(),
+        trial_ends_at: trialEndsAt,
+        subscription_ends_at: null,
+      },
+      { onConflict: 'user_id' },
+    )
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to reactivate subscription: ${error.message}`);
+  return data as Subscription;
 }
 
 /**

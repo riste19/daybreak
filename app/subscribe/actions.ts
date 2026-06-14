@@ -113,25 +113,25 @@ export async function createSubscriberAccount(
   }
 
   try {
-    const { subscription } = await provisionSubscriber({
+    const { subscription, reactivated } = await provisionSubscriber({
       email,
       plan: plan.id,
       trialDays: TRIAL_DAYS,
     });
-    console.info("[subscribe] mock charge OK; account created", {
-      planId: plan.id,
-      billing,
-      email,
-      subscriptionId: subscription.id,
-    });
+    console.info(
+      `[subscribe] mock charge OK; account ${reactivated ? "reactivated" : "created"}`,
+      { planId: plan.id, billing, email, subscriptionId: subscription.id },
+    );
     return {
       status: "success",
       planName: plan.name,
       email,
       demo: false,
-      message:
-        `Payment accepted (mock — no real charge). Your ${plan.name} account is ready and ` +
-        `your mornings will go to ${email}. Your ${TRIAL_DAYS}-day trial starts now.`,
+      message: reactivated
+        ? `Payment accepted (mock — no real charge). Welcome back — your ${plan.name} ` +
+          `subscription is active again on a fresh ${TRIAL_DAYS}-day trial, sending to ${email}.`
+        : `Payment accepted (mock — no real charge). Your ${plan.name} account is ready and ` +
+          `your mornings will go to ${email}. Your ${TRIAL_DAYS}-day trial starts now.`,
     };
   } catch (err) {
     if (err instanceof AccountExistsError) {
