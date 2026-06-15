@@ -26,7 +26,9 @@ export type InputType =
   | "scale" // 1–5
   | "short_text"
   | "chip_multi"
-  | "email";
+  | "email"
+  | "time" // local time-of-day, "HH:MM" (24h)
+  | "timezone"; // IANA zone id
 
 export type Depth = "surface" | "deeper";
 
@@ -1079,14 +1081,18 @@ export const universalQuestions: Question[] = [
   {
     id: "universal.sendTime",
     label: "When should it land?",
-    input: "single_select",
+    help: "Pick the exact time you'd like it to arrive — we'll aim for this in your time zone.",
+    input: "time",
     depth: "surface",
-    options: [
-      { value: "early", label: "Early (6am)" },
-      { value: "dawn", label: "Dawn (7am)" },
-      { value: "mid", label: "Mid-morning (8am)" },
-    ],
-    resolve: { context: "Prefers delivery in the {label} window." },
+    // Delivery metadata — deliberately NOT part of the generation context.
+  },
+  {
+    id: "universal.timezone",
+    label: "Your time zone",
+    help: "So your morning lands at the right local time. We've guessed it from your browser.",
+    input: "timezone",
+    depth: "surface",
+    // Delivery metadata — no resolve.
   },
   {
     id: "universal.note",

@@ -44,6 +44,22 @@ describe("renderDailyEmail — default layout", () => {
     const { html } = renderDailyEmail(BASE_INPUT);
     expect(html).not.toContain("border-left:3px solid");
   });
+
+  it("renders the upgrade nudge with the subscribe link in HTML and text", () => {
+    const { html, text } = renderDailyEmail(BASE_INPUT);
+    expect(DEFAULT_BRANDING.upgrade).not.toBeNull();
+    const upgrade = DEFAULT_BRANDING.upgrade!;
+    expect(html).toContain(upgrade.url);
+    expect(html).toContain(upgrade.label);
+    expect(text).toContain(upgrade.url);
+  });
+
+  it("omits the upgrade nudge when branding sets upgrade to null", () => {
+    const { html, text } = renderDailyEmail(BASE_INPUT, { upgrade: null });
+    const upgradeUrl = DEFAULT_BRANDING.upgrade!.url;
+    expect(html).not.toContain(upgradeUrl);
+    expect(text).not.toContain(upgradeUrl);
+  });
 });
 
 describe("renderDailyEmail — verbatim and feed text", () => {

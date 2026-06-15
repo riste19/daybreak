@@ -43,5 +43,41 @@ export async function POST(request: Request): Promise<Response> {
       { status: 502 },
     );
   }
+
+  // A real one-off delivery → mark the trial lead as 'sent' (best-effort).
+  if (upstream.ok) {
+    await recordTrialSendFromResponse(body, parsed);
+  }
+
   return Response.json(parsed, { status: upstream.status });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * If the request delivered an email to a recipient, record it against the trial
+ * lead. Only a response carrying a `messageId` (an actual send, not a preview)
+ * counts. Entirely best-effort: never affects the proxied response.
+ */
+async function recordTrialSendFromResponse(body: unknown, parsed: unknown): Promise<void> {
+  const to = isRecord(body) && typeof body.to === "string" ? body.to.trim() : "";
+  const result = isRecord(parsed) ? parsed : null;
+  if (!to || !result || typeof result.messageId !== "string") return;
+
+  const { isSupabaseAdminConfigured } = await import("@/lib/supabase/client");
+  if (!isSupabaseAdminConfigured()) return;
+
+  const { recordTrialSend } = await import("@/lib/supabase/storage");
+  try {
+    await recordTrialSend({
+      email: to,
+      subject: typeof result.subject === "string" ? result.subject : "",
+      theme: typeof result.theme === "string" ? result.theme : "",
+      usedFallback: typeof result.usedFallback === "boolean" ? result.usedFallback : false,
+    });
+  } catch (err) {
+    console.error("[api/send] failed to record trial send", err);
+  }
 }

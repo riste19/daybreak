@@ -11,15 +11,13 @@ export type Database = {
           id: string;
           email: string;
           name: string | null;
-          auth_id: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
-          id?: string; // auto-generated (uuid_generate_v4); auth_id is separate
+          id: string; // must be the Supabase Auth user id (no auto-generate — migration 002)
           email: string;
           name?: string | null;
-          auth_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -27,7 +25,6 @@ export type Database = {
           id?: string;
           email?: string;
           name?: string | null;
-          auth_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -90,7 +87,8 @@ export type Database = {
           custom_notes: string | null;
           preferred_themes: Json;
           focus_categories: Json;
-          email_layout: Json;
+          email_layout: Json; // customizable email layout (migration 003)
+          answers: Json; // raw onboarding answer map (migration 004)
           timezone: string;
           created_at: string;
           updated_at: string;
@@ -105,6 +103,7 @@ export type Database = {
           preferred_themes?: Json;
           focus_categories?: Json;
           email_layout?: Json;
+          answers?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -119,6 +118,7 @@ export type Database = {
           preferred_themes?: Json;
           focus_categories?: Json;
           email_layout?: Json;
+          answers?: Json;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -177,6 +177,57 @@ export type Database = {
           }
         ];
       };
+      trial_sends: {
+        Row: {
+          id: string;
+          email: string;
+          answers: Json;
+          focus_categories: Json;
+          primary_goal: string | null;
+          tone: string | null;
+          subject: string | null;
+          theme: string | null;
+          used_fallback: boolean | null;
+          status: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id: string | null;
+          created_at: string;
+          sent_at: string | null;
+          claimed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          answers?: Json;
+          focus_categories?: Json;
+          primary_goal?: string | null;
+          tone?: string | null;
+          subject?: string | null;
+          theme?: string | null;
+          used_fallback?: boolean | null;
+          status?: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          answers?: Json;
+          focus_categories?: Json;
+          primary_goal?: string | null;
+          tone?: string | null;
+          subject?: string | null;
+          theme?: string | null;
+          used_fallback?: boolean | null;
+          status?: 'lead' | 'sent' | 'claimed';
+          posthog_distinct_id?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+          claimed_at?: string | null;
+        };
+        Relationships: [];
+      };
       waitlist: {
         Row: {
           id: string;
@@ -217,9 +268,10 @@ export type Database = {
   };
 };
 
-/**
- * NOTE: The generated `Tables<>` / `TablesInsert<>` helper types were removed —
- * they were unused (only `Database` is imported) and the boilerplate broke type
- * checking because this schema declares no Views. Index tables directly via
- * `Database['public']['Tables']['<name>']['Row']` if a helper is ever needed.
- */
+/** Convenience accessors for a table's Row / Insert / Update shapes. */
+export type Tables<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row'];
+export type TablesInsert<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Insert'];
+export type TablesUpdate<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Update'];

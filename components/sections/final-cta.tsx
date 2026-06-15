@@ -2,8 +2,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { isLoggedIn } from "@/lib/supabase/server";
 
-export function FinalCta() {
+export async function FinalCta() {
+  const loggedIn = await isLoggedIn();
+
   return (
     <section id="join" className="dawn-glow relative overflow-hidden">
       <div
@@ -21,13 +24,18 @@ export function FinalCta() {
 
         <div className="mx-auto mt-9 flex flex-col items-center gap-3">
           <Button asChild size="lg" variant="glow">
-            <Link href="/start" transitionTypes={["nav-forward"]}>
-              Set up your mornings
+            <Link
+              href={loggedIn ? "/dashboard" : "/start"}
+              transitionTypes={["nav-forward"]}
+            >
+              {loggedIn ? "Go to your dashboard" : "Set up your mornings"}
               <ArrowRight className="size-4" />
             </Link>
           </Button>
           <p className="text-sm text-cream/55">
-            No app, no feed. One calm email a day.
+            {loggedIn
+              ? "Manage your plan and preferences anytime."
+              : "No app, no feed. One calm email a day."}
           </p>
         </div>
       </div>

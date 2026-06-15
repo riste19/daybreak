@@ -12,6 +12,7 @@ import { resolveAnswers, type AnswerValue } from "@/lib/onboarding/resolveAnswer
 import { buildGenerationInput, type GenerationInput } from "@/lib/onboarding/buildGenerationInput";
 import { DEFAULT_LAYOUT, type EmailLayout } from "@/lib/email/layout";
 import { isValidEmail } from "@/lib/validation";
+import { captureTrialLead } from "@/app/start/actions";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
@@ -44,6 +45,14 @@ export function OnboardingFlow() {
 
   const topRef = React.useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
+
+  // Funnel: record that the questionnaire was opened (once per mount).
+  const viewed = React.useRef(false);
+  React.useEffect(() => {
+    if (viewed.current) return;
+    viewed.current = true;
+    posthog.capture("start_viewed");
+  }, [posthog]);
 
   // Keep selected categories in schema order so steps + dots are predictable.
   const toggleCategory = (id: string) => {
@@ -98,54 +107,21 @@ export function OnboardingFlow() {
       categories: selected.length,
       tone: suggestedTone,
     });
+    // Capture the email + answers as a pre-registration lead (fire-and-forget;
+    // server no-ops without Supabase). Lets us see trial→paid conversion and
+    // pre-fill the account if this email subscribes later.
+    void captureTrialLead({
+      email: email.trim(),
+      selectedCategories: selected,
+      values,
+      distinctId: posthog.get_distinct_id?.() ?? null,
+    });
     // Map answers to the engine's request body. Email/sendTime are delivery
     // metadata and deliberately NOT part of GenerationInput.
     setInput(buildGenerationInput({ selectedCategories: selected, values }));
     setStage("customize");
     setSubmitted(true);
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
-  };
-
-  /**
-   * Persist the subscriber + preferences so the daily-send cron can email them.
-   * Called when they leave the customize screen (layout is final by then).
-   * Non-blocking — a failure here must not break the review/send UX.
-   */
-  const persistSubscription = () => {
-    const resolved = resolveAnswers({ selectedCategories: selected, values });
-    const timezone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    const name =
-      typeof values["universal.name"] === "string"
-        ? values["universal.name"].trim()
-        : "";
-    const note =
-      typeof values["universal.note"] === "string"
-        ? values["universal.note"].trim()
-        : "";
-    const sendTime =
-      typeof values["universal.sendTime"] === "string"
-        ? values["universal.sendTime"]
-        : undefined;
-
-    void fetch("/api/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email.trim(),
-        name: name || null,
-        tone: resolved.params.tone,
-        send_time: sendTime,
-        timezone,
-        primary_goal: goal,
-        custom_notes: note || undefined,
-        preferred_themes: resolved.params.preferredThemes,
-        focus_categories: resolved.params.focusAreas.map((f) => f.id),
-        email_layout: emailLayout,
-      }),
-    }).catch(() => {
-      /* non-blocking */
-    });
   };
 
   /* ───────────────── Customize → Review (post-questionnaire) ──────────── */
@@ -164,7 +140,6 @@ export function OnboardingFlow() {
               onChange={setEmailLayout}
               onBack={backToQuestions}
               onContinue={() => {
-                persistSubscription();
                 setStage("review");
                 requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
               }}

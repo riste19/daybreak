@@ -23,7 +23,7 @@ export const site = {
     "",
   ),
   /** Contact address shown in the footer. */
-  contactEmail: "hello@daybreak.email",
+  contactEmail: "gorgikos20@gmail.com",
   /** Placeholder social link (swap for your real handle). */
   social: {
     label: "@daybreak",

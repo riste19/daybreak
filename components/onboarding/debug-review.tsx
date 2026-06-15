@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeft, Check, Copy, Mail, Send, TriangleAlert } from "lucide-react";
+import { usePostHog } from "posthog-js/react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,7 @@ export function DebugReview({ input, emailLayout, to, onBackToEdit }: DebugRevie
   const [phase, setPhase] = React.useState<Phase>("preview");
   const [outcome, setOutcome] = React.useState<SendOutcome | null>(null);
   const [copied, setCopied] = React.useState(false);
+  const posthog = usePostHog();
 
   // The one editable knob: the system prompt. Edit it, send, see the effect.
   const [promptText, setPromptText] = React.useState(DEFAULT_SYSTEM_PROMPT);
@@ -150,6 +152,11 @@ export function DebugReview({ input, emailLayout, to, onBackToEdit }: DebugRevie
         .json()
         .catch(() => ({ error: "Response body was not valid JSON." }));
       setOutcome({ status: res.status, ok: res.ok, target, data });
+      if (res.ok) {
+        // Funnel: distinguish a generated preview from a real delivery.
+        const theme = (asGenerationResult(data) ?? asSendResult(data))?.theme;
+        posthog.capture(target === "deliver" ? "email_sent" : "email_previewed", { theme });
+      }
     } catch (err) {
       setOutcome({
         status: 0,

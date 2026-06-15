@@ -1,31 +1,24 @@
 "use server";
 
+import { site } from "@/lib/config";
+import { escapeHtml, isEmailConfigured, sendEmail } from "@/lib/email/send";
 import { isValidEmail, normalizeEmail } from "@/lib/validation";
+import type { ContactField, ContactState } from "./contact-state";
 
-/** What the contact form renders from. `idle` is the pre-submit state. */
-export type ContactState =
-  | { status: "idle" }
-  | { status: "success"; message: string }
-  | {
-      status: "error";
-      message: string;
-      fieldErrors: Partial<Record<ContactField, string>>;
-      /** Echo back what was typed so the form can repopulate after an error. */
-      values: Record<ContactField, string>;
-    };
-
-type ContactField = "name" | "email" | "subject" | "message";
-
-export const initialContactState: ContactState = { status: "idle" };
+// State type + initial state live in ./contact-state — a "use server" file may
+// only export async functions.
 
 const MAX_MESSAGE = 2000;
 
 /**
- * Validates a contact submission server-side. There is no email-delivery or
- * persistence layer in the repo yet (see `api/README.md` — Phase 1 is the
- * generation engine only), so an accepted message is logged for now. Wire this
- * to real delivery (transactional email / a `contact_messages` table) later —
- * the validation and the success contract stay the same.
+ * Validates a contact submission server-side, then emails it to the team inbox
+ * (`site.contactEmail`) via Resend, with the sender's address as reply-to so a
+ * reply lands back in their inbox.
+ *
+ * When the email transport isn't configured (no RESEND_API_KEY / EMAIL_FROM —
+ * e.g. local dev) it degrades gracefully: the message is logged and the user
+ * still sees the success state, mirroring how the auth/subscribe actions behave
+ * without keys.
  */
 export async function submitContactMessage(
   _prev: ContactState,
@@ -53,14 +46,57 @@ export async function submitContactMessage(
     };
   }
 
-  // Accepted. No delivery pipeline yet — log so it's visible during dev.
-  console.info("[contact] new message", {
-    name,
-    email,
-    subject: subject || "(none)",
-    length: message.length,
-  });
+  // No transport configured (local dev) → log and report success so the flow
+  // can still be exercised without keys.
+  if (!isEmailConfigured()) {
+    console.info("[contact] message (demo — email transport not configured)", {
+      name,
+      email,
+      subject: subject || "(none)",
+      length: message.length,
+    });
+    return successState(name, email);
+  }
 
+  const emailSubject = subject
+    ? `[Contact] ${subject}`
+    : `[Contact] New message from ${name}`;
+  const text =
+    `New message from the contact form\n\n` +
+    `Name: ${name}\n` +
+    `Email: ${email}\n` +
+    `Subject: ${subject || "(none)"}\n\n` +
+    `${message}\n`;
+  const html =
+    `<p><strong>New message from the contact form</strong></p>` +
+    `<p><strong>Name:</strong> ${escapeHtml(name)}<br />` +
+    `<strong>Email:</strong> ${escapeHtml(email)}<br />` +
+    `<strong>Subject:</strong> ${escapeHtml(subject || "(none)")}</p>` +
+    `<p style="white-space:pre-wrap;">${escapeHtml(message)}</p>`;
+
+  try {
+    await sendEmail({
+      to: site.contactEmail,
+      subject: emailSubject,
+      html,
+      text,
+      replyTo: email,
+    });
+  } catch (err) {
+    console.error("[contact] send failed", err);
+    return {
+      status: "error",
+      message:
+        "Something went wrong sending your message. Please try again in a moment.",
+      fieldErrors: {},
+      values: { name, email, subject, message },
+    };
+  }
+
+  return successState(name, email);
+}
+
+function successState(name: string, email: string): ContactState {
   const firstName = name.split(/\s+/)[0];
   return {
     status: "success",

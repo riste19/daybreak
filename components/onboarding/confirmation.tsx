@@ -3,6 +3,7 @@
 import { Sunrise, Pencil } from "lucide-react";
 
 import { getCategory } from "@/lib/onboarding/onboarding-schema";
+import { formatSendTime } from "@/lib/onboarding/preferences";
 import type { AnswerValue, ResolvedAnswers } from "@/lib/onboarding/resolveAnswers";
 
 interface ConfirmationProps {
@@ -13,12 +14,6 @@ interface ConfirmationProps {
   onEditCategory: (id: string) => void;
   onEditUniversal: () => void;
 }
-
-const SEND_TIMES: Record<string, string> = {
-  early: "6:00am",
-  dawn: "7:00am",
-  mid: "8:00am",
-};
 
 function asText(v: AnswerValue | undefined): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
@@ -36,7 +31,7 @@ export function Confirmation({
   const goal = asText(values["universal.goal"]);
   const email = asText(values["universal.email"]);
   const note = asText(values["universal.note"]);
-  const time = SEND_TIMES[String(values["universal.sendTime"] ?? "dawn")] ?? "7:00am";
+  const time = formatSendTime(asText(values["universal.sendTime"]) ?? "07:00");
 
   return (
     <div className="text-center">

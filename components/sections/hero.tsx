@@ -3,8 +3,12 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { site } from "@/lib/config";
+import { isLoggedIn } from "@/lib/supabase/server";
 
-export function Hero() {
+export async function Hero() {
+  // Signed in → the primary CTA points to the dashboard (and signals you're in).
+  const loggedIn = await isLoggedIn();
+
   return (
     <section className="dawn-glow relative flex min-h-dvh flex-col overflow-hidden">
       {/* Rising sun — purely decorative. Blooms up from the horizon on load. */}
@@ -43,13 +47,18 @@ export function Hero() {
           style={{ animationDelay: "990ms" }}
         >
           <Button asChild size="lg" variant="glow">
-            <Link href="/start" transitionTypes={["nav-forward"]}>
-              Set up your mornings
+            <Link
+              href={loggedIn ? "/dashboard" : "/start"}
+              transitionTypes={["nav-forward"]}
+            >
+              {loggedIn ? "Go to your dashboard" : "Set up your mornings"}
               <ArrowRight className="size-4" />
             </Link>
           </Button>
           <p className="text-sm text-cream/55">
-            Free to start. Takes about a minute — pick as little as one thing.
+            {loggedIn
+              ? "Welcome back — manage your mornings anytime."
+              : "Free to start. Takes about a minute — pick as little as one thing."}
           </p>
         </div>
       </div>
