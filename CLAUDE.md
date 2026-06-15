@@ -9,8 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo is **not** a monorepo workspace — it's two separately-installed packages:
 
 - **Root** — Next.js 16 (App Router, **Turbopack**, React 19, Tailwind v4): the marketing
-  site, onboarding (`/start`), the Supabase data layer, PostHog analytics, SEO, and the daily
-  cron. Uses **pnpm**.
+  site, onboarding (`/start`), accounts (magic-link `/login` + `/dashboard`) and `/subscribe`
+  checkout, the Supabase data layer, PostHog analytics, SEO, and the daily cron. Uses **pnpm**.
 - **`api/`** — a standalone **NestJS 11** "generation engine" with its own `package.json`,
   `pnpm-lock.yaml`, and `tsconfig.json`. It generates the email copy, renders the branded HTML
   template, and sends it (Resend, or console in dev). **It has no database.**
@@ -22,15 +22,34 @@ on each side — e.g. `lib/onboarding/buildGenerationInput.ts` ↔ `api/src/gene
 and `lib/email/layout.ts` ↔ `api/src/delivery/domain/layout.ts`. Tone/Theme vocabularies are
 lowercase on both sides on purpose (no casing-translation layer). Keep mirrors in sync by hand.
 
-## The daily delivery loop (the actual product)
+## The two funnels + the daily delivery loop (the actual product)
 
-`/start` onboarding → `app/api/subscribe` persists the subscriber + preferences + a trial in
-Supabase (**server-side service-role; no login/auth**) → a **Vercel Cron** (`vercel.json` →
-`app/api/cron/send-daily`, guarded by `CRON_SECRET`) runs daily, builds a `SendDailyInput` from
-each active subscriber's stored prefs (+ recent themes), POSTs to the engine's `/delivery/send`,
-and records `generated_emails` for idempotency. `app/unsubscribe` cancels a subscription.
-`lib/supabase/storage.ts` holds both the anon/RLS helpers and the new **service-role** query
-helpers used by the cron/subscribe routes.
+There are **two entry funnels**, both writing via **Server Actions** (there is no
+`app/api/subscribe` route — it was removed):
+
+1. **No-login trial** — `/start` onboarding → `app/start/actions.ts` (`captureTrialLead`) →
+   `lib/supabase/storage.ts:recordTrialLead()` writes a lead to the **`trial_sends`** table
+   (migration 005). A one-off sample email is sent via `app/api/send/route.ts`, which then marks
+   the lead `sent` (`recordTrialSendFromResponse`). No account, no auth.
+2. **Paid signup** — `/subscribe` → `app/subscribe/actions.ts` (`createSubscriberAccount`) →
+   `lib/supabase/storage.ts:provisionSubscriber()` creates a Supabase **Auth** user +
+   `users`/`subscriptions`/`user_preferences`. Prefs can be pre-filled from a prior trial lead via
+   `preferencesFromTrialLead()`. **Checkout is mock** (no Stripe yet).
+
+**Auth is now hybrid** (not "no auth"): passwordless **magic-link** login —
+`app/login/actions.ts` (`sendMagicLink` → `supabase.auth.signInWithOtp`) +
+`app/auth/callback/route.ts` (`exchangeCodeForSession`); session read server-side via
+`lib/supabase/server.ts` (`getSessionUser`, `createSupabaseServerClient`). `/dashboard` and
+`/dashboard/edit` (prefs editor) are auth-gated (redirect to `/login`).
+
+**The daily cron** — a **Vercel Cron** (`vercel.json` `0 6 * * *` → `app/api/cron/send-daily`,
+guarded by `CRON_SECRET`) builds a `SendDailyInput` from each active subscriber's stored prefs
+(+ recent themes) via `getActiveSubscribersForSend()`/`buildSendInputFromPrefs()`, POSTs to the
+engine's `/delivery/send`, and records `generated_emails` for idempotency. `app/unsubscribe`
+cancels a subscription. **Per-user `send_time` is NOT yet honored** — see Gotchas.
+`lib/supabase/storage.ts` holds the anon/RLS helpers plus the **service-role** helpers used by the
+cron/actions (`recordTrialLead`, `provisionSubscriber`, `preferencesFromTrialLead`,
+`getActiveSubscribersForSend`).
 
 ## LLM provider chain (`api/src/generation/llm/`)
 
@@ -73,4 +92,12 @@ Engine (`api/`):
   `next.config.ts`; a root `mdx-components.tsx` is **required** for the `content/blog` MDX hub.
 - The Supabase generated types (`lib/supabase/types.ts`) are hand-maintained and have drifted from
   the SQL migrations before — verify a column exists in `supabase/migrations/` before trusting the type.
+- **`send_time` is stored but ignored.** Migration 006 made `user_preferences.send_time` an `HH:MM`
+  string (+ `timezone`), but the cron sends to **all** active subs at fixed UTC 06:00 — it doesn't
+  filter by timezone/send_time. Don't assume per-user timing works (v2 = an hourly GitHub Actions cron).
+- **Trial-length mismatch:** `lib/pricing.ts` free tier says "7 personalized mornings" but
+  `app/subscribe/actions.ts` sets `TRIAL_DAYS = 3`. Known inconsistency.
+- **Checkout is mock**, not Stripe (`app/subscribe/actions.ts` validates card format only;
+  `4000000000000002` forces a decline; real auto-charge is a `TODO(billing)`). `lib/pricing.ts` is
+  the single source of truth for plans/prices.
 - CI (`.github/workflows/ci.yml`) runs tsc + `api` build + tests on every PR; keep them green.
