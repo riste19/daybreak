@@ -63,4 +63,8 @@ export class AppConfigService {
   get appUrl(): string {
     return this.config.get("APP_URL", { infer: true });
   }
+
+  get engineApiKey(): string | undefined {
+    return this.config.get("ENGINE_API_KEY", { infer: true });
+  }
 }

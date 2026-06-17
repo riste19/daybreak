@@ -30,6 +30,13 @@ export const EnvSchema = z.object({
   EMAIL_REPLY_TO: optionalString,
   /** Public app URL — used for the email's unsubscribe link. Set to the live site. */
   APP_URL: z.string().min(1).default("https://daybreak.email"),
+  /**
+   * Shared secret the Next.js app sends as the `x-api-key` header to authenticate
+   * calls to this engine (see EngineAuthGuard). Must match the Next app's
+   * ENGINE_API_KEY. Unset is tolerated in dev; in production the engine refuses
+   * unauthenticated requests so a public engine URL can't be abused.
+   */
+  ENGINE_API_KEY: optionalString,
 });
 
 export type Env = z.infer<typeof EnvSchema>;
