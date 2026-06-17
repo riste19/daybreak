@@ -15,19 +15,24 @@ function base(partial: Partial<AnswerSet> = {}): AnswerSet {
 }
 
 describe("resolveAnswers — tone", () => {
-  it("maps a 'blunt accountability' answer to tone:direct AND a context line", () => {
+  it("uses universal.tone as the resolved voice", () => {
     const result = resolveAnswers(
-      base({ values: { "universal.goal": "Stay on track", "work.tone": "direct" } }),
+      base({ values: { "universal.goal": "Stay on track", "universal.tone": "direct" } }),
     );
     expect(result.params.tone).toBe("direct");
-    expect(result.contextLines).toEqual(
-      expect.arrayContaining([expect.stringMatching(/accountab|direct|blunt/i)]),
-    );
   });
 
-  it("lets universal.tone override the aggregated vote", () => {
+  it("lets universal.tone override the aggregated category vote", () => {
+    // mood.help 'grounding' votes stoic; the explicit universal.tone wins.
     const result = resolveAnswers(
-      base({ values: { "universal.goal": "Be kind to myself", "work.tone": "direct", "universal.tone": "gentle" } }),
+      base({
+        selectedCategories: ["mood"],
+        values: {
+          "universal.goal": "Be kind to myself",
+          "mood.help": "grounding",
+          "universal.tone": "gentle",
+        },
+      }),
     );
     expect(result.params.tone).toBe("gentle");
   });
@@ -35,6 +40,19 @@ describe("resolveAnswers — tone", () => {
   it("defaults to gentle when nothing nudges tone", () => {
     const result = resolveAnswers(base({ selectedCategories: ["learning"], values: { "universal.goal": "Learn French", "learning.what": "French" } }));
     expect(result.params.tone).toBe("gentle");
+  });
+});
+
+describe("resolveAnswers — intensity", () => {
+  it("maps mood.directness to the delivery intensity", () => {
+    const result = resolveAnswers(
+      base({ selectedCategories: ["mood"], values: { "universal.goal": "x", "mood.directness": "direct" } }),
+    );
+    expect(result.params.intensity).toBe("direct");
+  });
+
+  it("defaults intensity to balanced when unset", () => {
+    expect(resolveAnswers(base()).params.intensity).toBe("balanced");
   });
 });
 
@@ -76,7 +94,6 @@ describe("resolveAnswers — caps", () => {
       selectedCategories: ["fitness"],
       values: {
         "universal.goal": "Move daily",
-        "fitness.cadence": "specific_days",
         "fitness.days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"], // 7 > cap 5
       },
     });
@@ -89,26 +106,26 @@ describe("resolveAnswers — caps", () => {
 describe("resolveAnswers — showIf gating", () => {
   it("ignores a hidden conditional question's answer", () => {
     const result = resolveAnswers({
-      selectedCategories: ["fitness"],
+      selectedCategories: ["work"],
       values: {
-        "universal.goal": "Move",
-        "fitness.cadence": "most_days", // not specific_days → days hidden
-        "fitness.days": ["mon", "tue"], // stale answer, must be ignored
+        "universal.goal": "Focus",
+        "work.friction": "overwhelm", // not procrastination → trigger hidden
+        "work.procrastination_trigger": "big_tasks", // stale answer, must be ignored
       },
     });
-    expect(result.contextLines.some((l) => /training days/i.test(l))).toBe(false);
+    expect(result.contextLines.some((l) => /stall/i.test(l))).toBe(false);
   });
 
   it("includes a conditional question when its predicate passes", () => {
     const result = resolveAnswers({
-      selectedCategories: ["fitness"],
+      selectedCategories: ["work"],
       values: {
-        "universal.goal": "Move",
-        "fitness.cadence": "specific_days",
-        "fitness.days": ["mon", "wed"],
+        "universal.goal": "Focus",
+        "work.friction": "procrastination",
+        "work.procrastination_trigger": "big_tasks",
       },
     });
-    expect(result.contextLines.some((l) => /training days/i.test(l))).toBe(true);
+    expect(result.contextLines.some((l) => /stall/i.test(l))).toBe(true);
   });
 });
 

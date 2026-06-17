@@ -8,6 +8,8 @@
  * (Resend when RESEND_API_KEY is set; logged to the engine console otherwise).
  */
 
+import { engineHeaders } from "@/lib/engine";
+
 const API_BASE = process.env.DAYBREAK_API_URL ?? "http://localhost:3002";
 
 export async function POST(request: Request): Promise<Response> {
@@ -22,7 +24,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     upstream = await fetch(`${API_BASE}/delivery/send`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: engineHeaders(),
       body: JSON.stringify(body),
     });
   } catch (err) {
