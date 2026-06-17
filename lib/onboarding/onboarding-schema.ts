@@ -35,6 +35,13 @@ export type Depth = "surface" | "deeper";
 /** Tone hints the engine can use to shape voice. */
 export type Tone = "gentle" | "direct" | "playful" | "stoic";
 
+/**
+ * Delivery intensity — how blunt / forceful the voice is. Orthogonal to Tone:
+ * a "playful" voice can still be "soft" or "direct". Set by mood.directness and
+ * consumed by the prompt alongside tone.
+ */
+export type Intensity = "soft" | "balanced" | "direct";
+
 /** Recurring themes the engine can weight when choosing what to say. */
 export type Theme =
   | "gratitude"
@@ -88,6 +95,8 @@ export interface ShowIf {
 export interface ParamContribution {
   /** Nudge overall tone toward this voice. */
   tone?: Tone;
+  /** Set delivery intensity (how blunt/forceful). Resolved by vote like tone. */
+  intensity?: Intensity;
   /** Add weight to these themes. */
   themes?: Theme[];
   /** Extra weight toward this question's category focus (default 1 per answer). */
@@ -192,37 +201,17 @@ export const categories: Category[] = [
         },
       },
       {
-        id: "fitness.cadence",
-        label: "How often, roughly?",
-        input: "single_select",
-        depth: "surface",
-        options: [
-          { value: "most_days", label: "Most days" },
-          { value: "few_times", label: "A few times a week" },
-          { value: "specific_days", label: "Specific days" },
-          { value: "when_i_can", label: "When I can" },
-        ],
-        resolve: {
-          contextByOption: {
-            most_days: "Aims to move most days.",
-            few_times: "Aims to move a few times a week.",
-            when_i_can: "Moves when they can — keep expectations flexible.",
-          },
-        },
-      },
-      {
         id: "fitness.days",
-        label: "Which days?",
+        label: "Any set days you train?",
+        help: "Optional — tap the days you usually move. Lets your morning notice training days.",
         input: "chip_multi",
         depth: "surface",
         options: WEEKDAYS,
-        // Demonstrates conditional reveal: only when cadence = specific_days.
-        showIf: { questionId: "fitness.cadence", operator: "equals", value: "specific_days" },
         resolve: { context: "Training days: {label}." },
       },
       {
         id: "fitness.vibe",
-        label: "Where are you right now?",
+        label: "How's it going lately?",
         input: "single_select",
         depth: "surface",
         options: [
@@ -271,7 +260,7 @@ export const categories: Category[] = [
       },
       {
         id: "fitness.working_around",
-        label: "Anything you're being gentle with?",
+        label: "Anything to work around right now?",
         help: "Optional — keeps nudges kind. No medical detail needed.",
         input: "short_text",
         depth: "deeper",
@@ -322,18 +311,6 @@ export const categories: Category[] = [
             regular: "Has an established practice.",
           },
         },
-      },
-      {
-        id: "meditation.frequency",
-        label: "How often would feel right?",
-        input: "single_select",
-        depth: "surface",
-        options: [
-          { value: "occasionally", label: "Now and then" },
-          { value: "few_week", label: "A few times a week" },
-          { value: "daily", label: "Daily" },
-        ],
-        resolve: { context: "Hopes to practice {label}." },
       },
       // ── deeper ──
       {
@@ -407,7 +384,7 @@ export const categories: Category[] = [
       },
       {
         id: "work.friction",
-        label: "What's the biggest friction?",
+        label: "What gets in the way most?",
         input: "single_select",
         depth: "surface",
         options: [
@@ -420,32 +397,6 @@ export const categories: Category[] = [
         resolve: {
           params: { themes: ["resistance"] },
           context: "Biggest friction at work: {label}.",
-        },
-      },
-      {
-        id: "work.tone",
-        label: "How should we talk to you about it?",
-        input: "single_select",
-        depth: "surface",
-        options: [
-          { value: "gentle", label: "Gentle encouragement", hint: "Warm and supportive" },
-          { value: "direct", label: "Straight talk", hint: "Blunt, keep me accountable" },
-          { value: "playful", label: "Keep it playful", hint: "Light and fun" },
-          { value: "stoic", label: "Calm & stoic", hint: "Grounded, no fuss" },
-        ],
-        resolve: {
-          // This is the "be blunt with me / accountability" path → tone:direct.
-          paramsByOption: {
-            gentle: { tone: "gentle" },
-            direct: { tone: "direct" },
-            playful: { tone: "playful" },
-            stoic: { tone: "stoic" },
-          },
-          contextByOption: {
-            direct: "Wants direct, accountable encouragement — be blunt.",
-            stoic: "Prefers a calm, stoic register.",
-            playful: "Enjoys a playful, light touch.",
-          },
         },
       },
       // ── deeper ──
@@ -474,6 +425,8 @@ export const categories: Category[] = [
         label: "When do you tend to stall?",
         input: "single_select",
         depth: "deeper",
+        // Only relevant when procrastination is the named friction.
+        showIf: { questionId: "work.friction", operator: "equals", value: "procrastination" },
         options: [
           { value: "big_tasks", label: "Big, fuzzy tasks" },
           { value: "boring", label: "Boring tasks" },
@@ -519,31 +472,12 @@ export const categories: Category[] = [
         },
       },
       {
-        id: "learning.cadence",
-        label: "When will you make time?",
-        input: "single_select",
-        depth: "surface",
-        options: [
-          { value: "daily", label: "A little daily" },
-          { value: "few_week", label: "A few times a week" },
-          { value: "weekly", label: "Weekly" },
-          { value: "specific_days", label: "Specific days" },
-          { value: "whenever", label: "Whenever I can" },
-        ],
-        resolve: {
-          contextByOption: {
-            daily: "Wants a small daily learning habit.",
-            whenever: "Fits learning in when they can.",
-          },
-        },
-      },
-      {
         id: "learning.days",
-        label: "Which days?",
+        label: "Any set days you study?",
+        help: "Optional — tap the days you usually practice. Lets your morning notice study days.",
         input: "chip_multi",
         depth: "surface",
         options: WEEKDAYS,
-        showIf: { questionId: "learning.cadence", operator: "equals", value: "specific_days" },
         resolve: { context: "Study days: {label}." },
       },
       // ── deeper ──
@@ -665,7 +599,7 @@ export const categories: Category[] = [
       },
       {
         id: "finance.tone",
-        label: "How does money tend to feel?",
+        label: "How do you feel about money lately?",
         input: "single_select",
         depth: "surface",
         options: [
@@ -738,6 +672,18 @@ export const categories: Category[] = [
           { value: "other", label: "Something else" },
         ],
         resolve: { params: { themes: ["identity"], focusWeight: 1 }, context: "Creative medium: {label}." },
+      },
+      {
+        id: "creativity.medium_other",
+        label: "What do you make?",
+        input: "short_text",
+        depth: "surface",
+        maxLength: CAPS.text,
+        moderate: true,
+        // Only when "Something else" is chosen above — otherwise the medium is known.
+        showIf: { questionId: "creativity.medium", operator: "equals", value: "other" },
+        placeholder: "Pottery, film, woodworking…",
+        resolve: { context: "Creative medium: {value}." },
       },
       {
         id: "creativity.want",
@@ -903,23 +849,10 @@ export const categories: Category[] = [
         },
       },
       {
-        id: "spirituality.frequency",
-        label: "How often do you make space for it?",
-        input: "single_select",
-        depth: "surface",
-        options: [
-          { value: "daily", label: "Daily" },
-          { value: "weekly", label: "Weekly" },
-          { value: "now_and_then", label: "Now and then" },
-        ],
-        resolve: { context: "Makes space for this {label}." },
-      },
-      // ── deeper ──
-      {
         id: "spirituality.practice",
         label: "A practice that resonates?",
         input: "single_select",
-        depth: "deeper",
+        depth: "surface",
         options: [
           { value: "gratitude_list", label: "Gratitude list" },
           { value: "prayer_reflection", label: "Prayer or reflection" },
@@ -929,6 +862,7 @@ export const categories: Category[] = [
         ],
         resolve: { context: "Resonates with: {label}." },
       },
+      // ── deeper ──
       {
         id: "spirituality.question",
         label: "A question you're sitting with?",
@@ -944,9 +878,10 @@ export const categories: Category[] = [
   },
 
   /* 10 ───────────────────────── Mood & Inner Life ───────────────────── */
-  // STRONGLY informs tone. This is NOT a mental-health intake: no questions
-  // about crisis, self-harm, diagnoses, or symptoms. Selects only — distress
-  // screening lives in the resolver for the universal free-text fields.
+  // STRONGLY informs voice: mood.help nudges tone, mood.directness sets delivery
+  // intensity. This is NOT a mental-health intake: no questions about crisis,
+  // self-harm, diagnoses, or symptoms. Selects only — distress screening lives in
+  // the resolver for the universal free-text fields.
   {
     id: "mood",
     label: "Mood & Inner Life",
@@ -979,24 +914,24 @@ export const categories: Category[] = [
       {
         id: "mood.directness",
         label: "How direct do you want it?",
+        help: "Separate from the overall voice — this is how blunt the delivery feels.",
         input: "single_select",
         depth: "surface",
         options: [
           { value: "soft", label: "Soft & gentle" },
           { value: "balanced", label: "Balanced" },
           { value: "direct", label: "Direct" },
-          { value: "no_nonsense", label: "No-nonsense" },
         ],
         resolve: {
-          // Mood is the strongest tone signal.
+          // Sets the delivery INTENSITY (orthogonal to tone), consumed by the prompt.
           paramsByOption: {
-            soft: { tone: "gentle" },
-            direct: { tone: "direct" },
-            no_nonsense: { tone: "direct" },
+            soft: { intensity: "soft" },
+            balanced: { intensity: "balanced" },
+            direct: { intensity: "direct" },
           },
           contextByOption: {
-            soft: "Wants a soft, gentle voice.",
-            no_nonsense: "Wants a no-nonsense, direct voice.",
+            soft: "Wants a soft, unhurried delivery.",
+            direct: "Wants a direct, no-fuss delivery.",
           },
         },
       },

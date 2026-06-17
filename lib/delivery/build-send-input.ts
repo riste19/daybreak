@@ -26,13 +26,24 @@ export function buildSendInputFromPrefs(
   prefs: UserPreferences,
   recentThemes: string[],
 ): SendDailyBody {
+  // focus_categories is stored in priority order; turn it into descending
+  // weights so the prompt can anchor on the strongest area. Intensity isn't
+  // persisted yet (deferred), so it defaults to balanced here.
+  const focusCategories = prefs.focus_categories ?? [];
+  const focusAreas = focusCategories.map((id, i) => ({
+    id,
+    weight: focusCategories.length - i,
+  }));
+
   return {
     to: user.email,
     name: user.name?.trim() || NAME_FALLBACK,
     primaryGoal: (prefs.primary_goal ?? "").trim(),
     tone: prefs.tone as Tone,
+    intensity: "balanced",
     customNotes: prefs.custom_notes?.trim() || undefined,
     contextLines: [],
+    focusAreas,
     preferredThemes: (prefs.preferred_themes ?? []) as {
       theme: Theme;
       weight: number;

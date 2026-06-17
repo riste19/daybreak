@@ -8,6 +8,8 @@
  * unreachable, we answer 502 with a readable JSON error rather than throwing.
  */
 
+import { engineHeaders } from "@/lib/engine";
+
 const API_BASE = process.env.DAYBREAK_API_URL ?? "http://localhost:3002";
 
 export async function POST(request: Request): Promise<Response> {
@@ -22,7 +24,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     upstream = await fetch(`${API_BASE}/generate/preview`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: engineHeaders(),
       body: JSON.stringify(body),
     });
   } catch (err) {

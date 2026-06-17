@@ -5,10 +5,11 @@
  * Output contract (what the engine should read):
  *   params:
  *     tone           — single resolved voice (universal.tone wins if set)
+ *     intensity      — how blunt/forceful the delivery is (mood.directness), default balanced
  *     focusAreas     — selected categories, weighted + sorted (most → least)
  *     preferredThemes— themes the answers leaned on, weighted + sorted
  *   contextLines     — short, human-readable fragments folded into the prompt's
- *                      context block, in a stable order
+ *                      context block, ordered by focus weight (strongest first)
  *   flags            — anything the moderation layer must look at
  *   needsModeration  — convenience boolean (flags.length > 0)
  *
@@ -30,6 +31,7 @@ import {
   type Question,
   type ParamContribution,
   type ShowIf,
+  type Intensity,
   type Theme,
   type Tone,
 } from "./onboarding-schema";
@@ -47,6 +49,8 @@ export interface AnswerSet {
 
 export interface ResolvedParams {
   tone: Tone;
+  /** How blunt/forceful the delivery is (orthogonal to tone). */
+  intensity: Intensity;
   focusAreas: { id: string; weight: number }[];
   preferredThemes: { theme: Theme; weight: number }[];
 }
@@ -71,6 +75,7 @@ interface Schema {
 }
 
 const DEFAULT_TONE: Tone = "gentle";
+const DEFAULT_INTENSITY: Intensity = "balanced";
 
 /* ───────────────────────── Lightweight moderation ───────────────────────
  * Placeholder for the REAL input-moderation layer. The contract that matters
@@ -159,35 +164,48 @@ function fillTemplate(template: string, q: Question, value: AnswerValue): string
     .trim();
 }
 
+interface Accumulators {
+  toneVotes: Map<Tone, number>;
+  intensityVotes: Map<Intensity, number>;
+  themeWeights: Map<Theme, number>;
+  focusWeights: Map<string, number>;
+}
+
 /** Merge a param contribution into the running accumulators. */
 function applyParams(
   contrib: ParamContribution | undefined,
-  toneVotes: Map<Tone, number>,
-  themeWeights: Map<Theme, number>,
-  focusWeights: Map<string, number>,
+  acc: Accumulators,
   categoryId: string,
 ) {
   if (!contrib) return;
-  if (contrib.tone) toneVotes.set(contrib.tone, (toneVotes.get(contrib.tone) ?? 0) + 1);
+  if (contrib.tone) acc.toneVotes.set(contrib.tone, (acc.toneVotes.get(contrib.tone) ?? 0) + 1);
+  if (contrib.intensity) {
+    acc.intensityVotes.set(contrib.intensity, (acc.intensityVotes.get(contrib.intensity) ?? 0) + 1);
+  }
   for (const t of contrib.themes ?? []) {
-    themeWeights.set(t, (themeWeights.get(t) ?? 0) + 1);
+    acc.themeWeights.set(t, (acc.themeWeights.get(t) ?? 0) + 1);
   }
   if (contrib.focusWeight) {
-    focusWeights.set(categoryId, (focusWeights.get(categoryId) ?? 0) + contrib.focusWeight);
+    acc.focusWeights.set(categoryId, (acc.focusWeights.get(categoryId) ?? 0) + contrib.focusWeight);
   }
 }
 
-function resolveTone(toneVotes: Map<Tone, number>, override?: AnswerValue): Tone {
-  if (typeof override === "string" && override) return override as Tone;
-  let best: Tone = DEFAULT_TONE;
+/** Winner of a vote map, with a default when no votes were cast. */
+function topVote<T>(votes: Map<T, number>, fallback: T): T {
+  let best = fallback;
   let bestCount = 0;
-  for (const [tone, count] of toneVotes) {
+  for (const [value, count] of votes) {
     if (count > bestCount) {
-      best = tone;
+      best = value;
       bestCount = count;
     }
   }
   return best;
+}
+
+function resolveTone(toneVotes: Map<Tone, number>, override?: AnswerValue): Tone {
+  if (typeof override === "string" && override) return override as Tone;
+  return topVote(toneVotes, DEFAULT_TONE);
 }
 
 /* ─────────────────────────────── Main ───────────────────────────────── */
@@ -199,10 +217,14 @@ export function resolveAnswers(
   const { selectedCategories, values } = answers;
   const selected = new Set(selectedCategories);
 
-  const toneVotes = new Map<Tone, number>();
-  const themeWeights = new Map<Theme, number>();
-  const focusWeights = new Map<string, number>();
-  const contextLines: string[] = [];
+  const acc: Accumulators = {
+    toneVotes: new Map<Tone, number>(),
+    intensityVotes: new Map<Intensity, number>(),
+    themeWeights: new Map<Theme, number>(),
+    focusWeights: new Map<string, number>(),
+  };
+  // Tagged with the source category so the final order can follow focus weight.
+  const contextEntries: { categoryId: string; line: string }[] = [];
   const flags: ModerationFlag[] = [];
 
   /** Resolve one question's answer into params + an optional context line. */
@@ -231,11 +253,11 @@ export function resolveAnswers(
     if (!r) return;
 
     // Params: flat first, then per-option for the chosen value(s).
-    applyParams(r.params, toneVotes, themeWeights, focusWeights, categoryId);
+    applyParams(r.params, acc, categoryId);
     if (r.paramsByOption) {
       const vals = Array.isArray(value) ? value : [String(value)];
       for (const v of vals) {
-        applyParams(r.paramsByOption[v], toneVotes, themeWeights, focusWeights, categoryId);
+        applyParams(r.paramsByOption[v], acc, categoryId);
       }
     }
 
@@ -246,12 +268,12 @@ export function resolveAnswers(
         const tmpl = r.contextByOption[v];
         if (tmpl) {
           const line = fillTemplate(tmpl, q, value);
-          if (line) contextLines.push(line);
+          if (line) contextEntries.push({ categoryId, line });
         }
       }
     } else if (r.context) {
       const line = fillTemplate(r.context, q, value);
-      if (line) contextLines.push(line);
+      if (line) contextEntries.push({ categoryId, line });
     }
   };
 
@@ -264,9 +286,10 @@ export function resolveAnswers(
     resolveQuestion(q, "universal");
   }
 
-  const tone = resolveTone(toneVotes, values["universal.tone"]);
+  const tone = resolveTone(acc.toneVotes, values["universal.tone"]);
+  const intensity = topVote(acc.intensityVotes, DEFAULT_INTENSITY);
 
-  const focusAreas = [...focusWeights.entries()]
+  const focusAreas = [...acc.focusWeights.entries()]
     .map(([id, weight]) => ({ id, weight }))
     .sort((a, b) => b.weight - a.weight);
 
@@ -275,12 +298,21 @@ export function resolveAnswers(
     if (!focusAreas.some((f) => f.id === id)) focusAreas.push({ id, weight: 0 });
   }
 
-  const preferredThemes = [...themeWeights.entries()]
+  const preferredThemes = [...acc.themeWeights.entries()]
     .map(([theme, weight]) => ({ theme, weight }))
     .sort((a, b) => b.weight - a.weight);
 
+  // Order context lines so the user's strongest focus areas lead. Universal
+  // lines (name/goal/note) sort last; equal weights keep schema order (stable).
+  const weightFor = (categoryId: string): number =>
+    categoryId === "universal" ? -Infinity : acc.focusWeights.get(categoryId) ?? 0;
+  const contextLines = contextEntries
+    .map((entry, i) => ({ ...entry, i }))
+    .sort((a, b) => weightFor(b.categoryId) - weightFor(a.categoryId) || a.i - b.i)
+    .map((entry) => entry.line);
+
   return {
-    params: { tone, focusAreas, preferredThemes },
+    params: { tone, intensity, focusAreas, preferredThemes },
     contextLines,
     flags,
     needsModeration: flags.length > 0,
