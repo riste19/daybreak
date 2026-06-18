@@ -33,7 +33,7 @@ export function UnsubscribeForm({ initialEmail = "" }: { initialEmail?: string }
   if (status === "done") {
     return (
       <p className="text-lg leading-relaxed text-ink-soft">
-        You&apos;re unsubscribed — no more daily emails will arrive. Take care of
+        You&apos;re unsubscribed. No more daily emails will arrive. Take care of
         your mornings. 🌙
       </p>
     );
@@ -57,7 +57,7 @@ export function UnsubscribeForm({ initialEmail = "" }: { initialEmail?: string }
       </div>
       {status === "error" && (
         <p className="text-sm text-red-600">
-          Something went wrong — check the email and try again.
+          Something went wrong, check the email and try again.
         </p>
       )}
     </form>

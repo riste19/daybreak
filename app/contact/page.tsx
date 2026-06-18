@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Mail, MessageCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 
 import { site } from "@/lib/config";
 import { Footer } from "@/components/sections/footer";
@@ -18,7 +18,7 @@ export default function ContactPage() {
       <PageHero
         eyebrow="We'd love to hear from you"
         title="Get in touch"
-        subtitle="Questions, feedback, or a story about your mornings — send a note and a real person will write back."
+        subtitle="Questions, feedback, or a story about your mornings? Send a note and a real person will write back."
       />
 
       <section className="mx-auto grid max-w-5xl gap-10 px-6 py-16 sm:py-20 lg:grid-cols-[1fr_1.4fr] lg:gap-14">
@@ -38,13 +38,6 @@ export default function ContactPage() {
               label="Email"
               value={site.contactEmail}
               href={`mailto:${site.contactEmail}`}
-            />
-            <ContactMethod
-              icon={<MessageCircle className="size-5" aria-hidden />}
-              label="Social"
-              value={site.social.label}
-              href={site.social.href}
-              external
             />
           </ul>
 

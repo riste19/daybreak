@@ -12,7 +12,7 @@ import { Footer } from "@/components/sections/footer";
 export const metadata: Metadata = {
   // Keyword-rich absolute title for the homepage (overrides the layout default);
   // the description still comes from the root layout (site.description).
-  title: { absolute: "Daybreak — A personalized daily motivational email" },
+  title: { absolute: "Daybreak: A personalized daily motivational email" },
   alternates: { canonical: "/" },
 };
 

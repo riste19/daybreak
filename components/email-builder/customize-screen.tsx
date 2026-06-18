@@ -75,7 +75,7 @@ export function CustomizeScreen({
       <header className="mb-6">
         <h2 className="font-display text-2xl font-medium text-ink">Customize your email</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Drag to reorder, and add your own text blocks — they show in the email
+          Drag to reorder, and add your own text blocks. They show in the email
           exactly as you type them. The AI message is written fresh each morning;
           click &ldquo;Preview with AI&rdquo; to see it.
         </p>

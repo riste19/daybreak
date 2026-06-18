@@ -25,7 +25,7 @@ export function SampleEmail() {
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-ink-soft">
             A real example for someone writing their first novel. Tomorrow’s
-            would be different — and so would yours.
+            would be different, and so would yours.
           </p>
         </Reveal>
 
@@ -62,7 +62,7 @@ export function SampleEmail() {
             <div className="space-y-4 px-5 py-7 text-[15px] leading-relaxed text-ink sm:px-7 sm:text-base">
               <p>Morning, Maya.</p>
               <p>
-                Yesterday you said chapter nine was fighting you — and then you
+                Yesterday you said chapter nine was fighting you, and then you
                 showed up to it anyway. Notice that. The showing up{" "}
                 <em>is</em> the writing; the rest is just typing.
               </p>
@@ -76,7 +76,7 @@ export function SampleEmail() {
                 Your protagonist has been waiting on that rooftop since Tuesday.
                 Go see what she does.
               </p>
-              <p className="text-ink-soft">— {site.name}</p>
+              <p className="text-ink-soft">{site.name}</p>
             </div>
 
             {/* Subtle "how it stays personal" meta strip */}
@@ -98,7 +98,7 @@ export function SampleEmail() {
         </Reveal>
 
         <Reveal delay={250} className="mt-6 text-center text-sm text-ink-soft">
-          <p>Different goal, different tone, different morning — every single day.</p>
+          <p>Different goal, different tone, different morning, every single day.</p>
         </Reveal>
       </div>
     </section>

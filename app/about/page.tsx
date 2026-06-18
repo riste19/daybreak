@@ -9,7 +9,7 @@ import { PageHero } from "@/components/sections/page-hero";
 
 export const metadata: Metadata = {
   title: "About us",
-  description: `The story and the small team behind ${site.name} — one calm, personal email at first light.`,
+  description: `The story and the small team behind ${site.name}, one calm, personal email at first light.`,
   alternates: { canonical: "/about" },
 };
 
@@ -22,7 +22,7 @@ const values = [
   {
     icon: Feather,
     title: "Personal, not generic",
-    body: "Every email is written around your goals, your tasks, and the tone you choose — not a template with your name pasted on top.",
+    body: "Every email is written around your goals, your tasks, and the tone you choose, not a template with your name pasted on top.",
   },
   {
     icon: Compass,
@@ -42,7 +42,7 @@ export default function AboutPage() {
 
       <section className="mx-auto max-w-2xl space-y-6 px-6 py-16 text-lg leading-relaxed text-ink-soft sm:py-20">
         <p>
-          Most mornings start with a flood — notifications, headlines, other
+          Most mornings start with a flood: notifications, headlines, other
           people's priorities. We wanted the opposite: a single, quiet moment
           that points you back toward what actually matters to{" "}
           <span className="text-ink">you</span>.
@@ -50,7 +50,7 @@ export default function AboutPage() {
         <p>
           So we built {site.name}. You tell us what you're working toward and
           the tone that lands for you, and each morning we send one short,
-          thoughtfully written email — shaped around your goals and tasks,
+          thoughtfully written email, shaped around your goals and tasks,
           delivered at the time you set. That's the whole product. No dashboard
           to maintain, nothing to keep up with.
         </p>

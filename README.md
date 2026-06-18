@@ -84,8 +84,9 @@ Heavier rate limiting and analytics arrive in Prompt 2.
 1. Push this repo to GitHub.
 2. In [vercel.com](https://vercel.com), **Add New → Project** and import the repo.
 3. Framework preset auto-detects **Next.js** — no settings needed. Click **Deploy**.
-4. Update `site.url` in `lib/config.ts` to your real domain so OG/Twitter share
-   previews and the canonical URL are correct.
+4. Set `NEXT_PUBLIC_SITE_URL` to `https://daybreakmail.com` (the production domain;
+   `lib/config.ts` already falls back to it) so OG/Twitter share previews and the
+   canonical URL are correct.
 
 The page is a single static route plus one serverless route handler, so it stays
 comfortably within the free Hobby tier.

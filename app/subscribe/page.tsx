@@ -8,14 +8,14 @@ import { PricingPlans } from "@/components/subscribe/pricing-plans";
 
 export const metadata: Metadata = {
   title: "Plans & pricing",
-  description: `Keep your mornings personal, every day. Compare ${site.name}'s free trial with Daybreak Daily — your time, your tone, your own email layout.`,
+  description: `Keep your mornings personal, every day. Compare ${site.name}'s free trial with Daybreak Daily, your time, your tone, your own email layout.`,
 };
 
 const reassurances = [
   {
     icon: CalendarOff,
     title: "Cancel in a click",
-    body: "No contracts, no hoops. Pause or leave whenever you like — your settings wait for you.",
+    body: "No contracts, no hoops. Pause or leave whenever you like, your settings wait for you.",
   },
   {
     icon: MailX,
@@ -32,7 +32,7 @@ const reassurances = [
 const faqs = [
   {
     q: "Is the free version really free?",
-    a: "Yes. First Light gives you a full week of personalized mornings with no card required — so you can feel the difference before deciding.",
+    a: "Yes. First Light gives you a full week of personalized mornings with no card required, so you can feel the difference before deciding.",
   },
   {
     q: "What is the “daily customisation” I keep seeing?",
@@ -62,7 +62,7 @@ export default async function SubscribePage({
     <main>
       <PageHero
         eyebrow="Plans & pricing"
-        title="Keep your mornings personal — every day"
+        title="Keep your mornings personal, every day"
         subtitle={`Start free, then make it a habit. ${site.name} Daily adds daily delivery on your schedule, your own email layout, and a lot more.`}
       />
 

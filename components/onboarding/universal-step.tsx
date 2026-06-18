@@ -18,7 +18,7 @@ export function UniversalStep({ values, onChange, suggestedTone }: UniversalStep
       <header className="mb-7">
         <h2 className="font-display text-2xl font-medium text-ink">A few last touches</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Just one line is required — the rest is yours to shape or skip.
+          Just one line is required. The rest is yours to shape or skip.
         </p>
       </header>
 

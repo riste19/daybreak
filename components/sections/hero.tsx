@@ -36,7 +36,7 @@ export async function Hero() {
           className="animate-dawn-rise mt-6 max-w-xl text-lg leading-relaxed text-cream/75"
           style={{ animationDelay: "710ms" }}
         >
-          {site.name} is a personalized daily motivational email — one short,
+          {site.name} is a personalized daily motivational email, one short,
           thoughtfully written note at dawn, shaped around your goals, your
           tasks, and the tone you choose. No app to open, no feed to scroll.
           Just a calm reason to begin with intention.
@@ -57,8 +57,8 @@ export async function Hero() {
           </Button>
           <p className="text-sm text-cream/55">
             {loggedIn
-              ? "Welcome back — manage your mornings anytime."
-              : "Free to start. Takes about a minute — pick as little as one thing."}
+              ? "Welcome back. Manage your mornings anytime."
+              : "Free to start. Takes about a minute, pick as little as one thing."}
           </p>
         </div>
       </div>

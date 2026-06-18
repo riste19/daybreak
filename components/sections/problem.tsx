@@ -23,7 +23,7 @@ export function Problem() {
             </p>
             <p>
               The truth is simple: encouragement only lands when it’s about{" "}
-              <span className="font-medium text-ink">you</span> — your goal, this
+              <span className="font-medium text-ink">you</span>: your goal, this
               week, today. Not everyone. Not in general. You.
             </p>
           </div>

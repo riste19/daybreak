@@ -11,7 +11,7 @@ const steps = [
   {
     icon: SlidersHorizontal,
     title: "Pick your tone and your time",
-    body: "Gentle, direct, playful, or stoic — and the exact minute it arrives. Your morning, set up your way.",
+    body: "Gentle, direct, playful, or stoic, and the exact minute it arrives. Your morning, set up your way.",
   },
   {
     icon: Sunrise,

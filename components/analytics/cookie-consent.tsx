@@ -5,69 +5,119 @@ import { usePostHog } from "posthog-js/react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
- * GDPR opt-in cookie banner. PostHog is initialized with
- * `opt_out_capturing_by_default: true` (see posthog-provider), so no analytics
- * are captured until the visitor clicks Accept. The banner shows only while no
- * choice has been made; PostHog persists the decision, so it won't reappear.
+ * Event the "Manage cookie preferences" link (privacy page) dispatches to
+ * reopen the banner — so consent can be changed or withdrawn at any time
+ * (GDPR Art. 7(3)), not just on the first visit.
+ */
+export const OPEN_COOKIE_SETTINGS_EVENT = "daybreak:open-cookie-settings";
+
+// Our own record of the choice. We don't rely on PostHog's consent state to
+// decide whether to show the banner: PostHog is initialized with
+// `opt_out_capturing_by_default: true`, so it reports "opted out" before the
+// visitor has actually chosen — which would hide the banner forever.
+const CONSENT_KEY = "daybreak-cookie-consent"; // "accepted" | "declined"
+
+// Keep in sync with the `duration-300` transition below.
+const ANIM_MS = 300;
+
+// How far the visitor must scroll before the banner appears on a fresh visit.
+const SCROLL_TRIGGER_PX = 80;
+
+/**
+ * Standard GDPR/ePrivacy cookie banner. No analytics are captured until the
+ * visitor clicks Accept (PostHog stays opted out by default). On a fresh visit
+ * — no stored choice — the banner slides in right away; once a choice is made
+ * it animates out and doesn't reappear, but it can be reopened from the privacy
+ * page.
  */
 export function CookieConsent() {
   const posthog = usePostHog();
-  const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false); // present in the DOM
+  const [shown, setShown] = useState(false); // animated in/out state
 
+  // First visit (no stored choice) → show the banner once the visitor scrolls
+  // down, so it doesn't interrupt the first impression of the page.
   useEffect(() => {
-    // No analytics configured (e.g. local dev without a key) → no banner.
-    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(CONSENT_KEY);
+    } catch {
+      // localStorage unavailable (private mode) — show the banner anyway.
+    }
+    if (stored) return;
 
-    // Wait until PostHog has loaded its persisted consent before deciding whether
-    // to show the banner — otherwise a prior choice would be missed on reload.
-    let tries = 0;
-    const check = (): boolean => {
-      const ph = posthog as (typeof posthog & { __loaded?: boolean }) | undefined;
-      if (!ph?.__loaded) return false;
-      const decided =
-        ph.has_opted_in_capturing() || ph.has_opted_out_capturing();
-      setVisible(!decided);
-      return true;
+    const onScroll = () => {
+      if (window.scrollY > SCROLL_TRIGGER_PX) {
+        setMounted(true);
+        window.removeEventListener("scroll", onScroll);
+      }
     };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // Catch the case where the page loads already scrolled (e.g. restored position).
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-    if (check()) return;
-    const id = setInterval(() => {
-      if (check() || ++tries > 25) clearInterval(id);
-    }, 200);
-    return () => clearInterval(id);
-  }, [posthog]);
+  // Allow the privacy page to reopen the banner to change/withdraw consent.
+  useEffect(() => {
+    const open = () => setMounted(true);
+    window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, open);
+  }, []);
 
-  if (!visible) return null;
+  // Once in the DOM, trigger the enter animation on the next frame.
+  useEffect(() => {
+    if (!mounted) return;
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, [mounted]);
 
-  const accept = () => {
-    posthog?.opt_in_capturing();
-    setVisible(false);
-  };
-  const decline = () => {
-    posthog?.opt_out_capturing();
-    setVisible(false);
+  if (!mounted) return null;
+
+  const choose = (accepted: boolean) => {
+    try {
+      localStorage.setItem(CONSENT_KEY, accepted ? "accepted" : "declined");
+    } catch {
+      // ignore — choice still applies for this session via PostHog below.
+    }
+    const ph = posthog as (typeof posthog & { __loaded?: boolean }) | undefined;
+    if (ph?.__loaded) {
+      if (accepted) ph.opt_in_capturing();
+      else ph.opt_out_capturing();
+    }
+    // Animate out, then unmount once the transition finishes.
+    setShown(false);
+    window.setTimeout(() => setMounted(false), ANIM_MS);
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 sm:px-6 sm:pb-6">
+    <div
+      role="dialog"
+      aria-label="Cookie consent"
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-50 px-4 pb-4 transition-all duration-300 ease-out motion-reduce:transition-none sm:px-6 sm:pb-6",
+        shown ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+      )}
+    >
       <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-border bg-card/95 p-5 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-ink-soft">
-          We use privacy-friendly analytics to understand how the site is used —
+          We use privacy-friendly analytics to understand how the site is used,
           only if you say yes.{" "}
           <Link
             href="/privacy"
             className="font-medium text-primary underline underline-offset-4 hover:opacity-80"
           >
-            Privacy policy
+            Privacy &amp; cookies
           </Link>
         </p>
         <div className="flex shrink-0 gap-2">
-          <Button variant="outline" size="sm" onClick={decline}>
+          <Button variant="outline" size="sm" onClick={() => choose(false)}>
             Decline
           </Button>
-          <Button size="sm" onClick={accept}>
+          <Button size="sm" onClick={() => choose(true)}>
             Accept
           </Button>
         </div>

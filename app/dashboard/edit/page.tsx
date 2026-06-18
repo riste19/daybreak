@@ -60,7 +60,7 @@ export default async function EditPreferencesPage() {
           Edit your mornings
         </h1>
         <p className="mt-2 text-ink-soft">
-          Reshape what {site.name} sends you. Everything&apos;s here on one page —
+          Reshape what {site.name} sends you. Everything&apos;s here on one page,
           adjust as much or as little as you like, then save.
         </p>
 

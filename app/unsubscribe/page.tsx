@@ -23,7 +23,7 @@ export default async function UnsubscribePage({
       <PageHero
         eyebrow="Unsubscribe"
         title="Stop your daily emails"
-        subtitle="Enter your email and we'll stop sending. No hard feelings — you can come back any time."
+        subtitle="Enter your email and we'll stop sending. No hard feelings, you can come back any time."
       />
       <section className="mx-auto max-w-md px-6 py-16 sm:py-20">
         <UnsubscribeForm initialEmail={email ?? ""} />
