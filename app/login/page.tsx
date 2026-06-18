@@ -24,7 +24,7 @@ export default async function LoginPage() {
       <PageHero
         eyebrow="Welcome back"
         title="Sign in to Daybreak"
-        subtitle="Enter your email and we'll send you a secure sign-in link — no password to remember."
+        subtitle="Enter your email and we'll send you a secure sign-in link, no password to remember."
       />
 
       <section className="mx-auto max-w-md px-6 py-16 sm:py-20">

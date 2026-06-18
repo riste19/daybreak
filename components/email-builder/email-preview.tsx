@@ -216,7 +216,7 @@ function Block({
               color: C.inkSoft,
             }}
           >
-            Your daily message appears here — click &ldquo;Preview with AI&rdquo; to fill it.
+            Your daily message appears here. Click &ldquo;Preview with AI&rdquo; to fill it.
           </div>
         );
       }
@@ -283,7 +283,7 @@ function ChromeBlock({
     case "signature":
       return (
         <p style={{ margin: "0 0 22px", fontFamily: FONT_SANS, fontSize: 15, color: C.inkSoft }}>
-          — {productName}
+          {productName}
         </p>
       );
     case "meta":

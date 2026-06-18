@@ -135,7 +135,7 @@ export function EditPreferencesForm({
       {/* ── Focus areas ─────────────────────────────────────────────────── */}
       <Section
         title="Focus areas"
-        description={`What your mornings center on — choose up to ${MAX_CATEGORIES}.`}
+        description={`What your mornings center on, choose up to ${MAX_CATEGORIES}.`}
       >
         <CategoryGrid selected={selected} onToggle={toggleCategory} max={MAX_CATEGORIES} />
       </Section>

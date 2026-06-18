@@ -169,7 +169,7 @@ export function OnboardingFlow() {
               What should your mornings focus on?
             </h1>
             <p className="mx-auto mt-3 max-w-md text-ink-soft">
-              Pick what you want {site.name} to focus on — up to {MAX_CATEGORIES}.
+              Pick what you want {site.name} to focus on, up to {MAX_CATEGORIES}.
               Even one is plenty.
             </p>
           </header>
@@ -182,7 +182,7 @@ export function OnboardingFlow() {
 
           <p className="mt-5 text-center text-sm text-ink-soft">
             {selected.length >= MAX_CATEGORIES
-              ? `That's ${MAX_CATEGORIES} — a lovely place to start. You can change this anytime.`
+              ? `That's ${MAX_CATEGORIES}, a lovely place to start. You can change this anytime.`
               : "You can change this anytime."}
           </p>
 

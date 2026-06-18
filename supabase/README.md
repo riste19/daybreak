@@ -55,7 +55,7 @@ Until `SUPABASE_SERVICE_ROLE_KEY` is set, account creation runs in a graceful
 If you want to use Supabase Auth for user signup/login:
 
 1. Go to **Authentication > Providers** and enable Email
-2. Configure redirect URLs (add `http://localhost:3000/auth/callback` for dev)
+2. Configure redirect URLs (add `https://daybreakmail.com/auth/callback` for prod and `http://localhost:3000/auth/callback` for dev)
 3. Update the `users.auth_id` field to link to Supabase Auth users
 
 ---

@@ -9,7 +9,7 @@ import { Footer } from "@/components/sections/footer";
 
 export const metadata: Metadata = {
   title: "Blog",
-  description: `Calm, practical notes on motivation, morning routines, and building habits that last — from the ${site.name} team.`,
+  description: `Calm, practical notes on motivation, morning routines, and building habits that last, from the ${site.name} team.`,
   alternates: { canonical: "/blog" },
 };
 

@@ -86,7 +86,7 @@ function QuestionControl({
           />
           {atCap && (
             <p className="mt-2 text-xs text-ink-soft">
-              Pick up to {CAPS.multi} — that&apos;s plenty.
+              Pick up to {CAPS.multi}, that&apos;s plenty.
             </p>
           )}
         </>

@@ -315,7 +315,7 @@ function ResultView({
           title="Delivered"
           subtitle={
             sent.provider === "console"
-              ? "Engine has no RESEND_API_KEY — the email was printed to its console instead of sent."
+              ? "Engine has no RESEND_API_KEY. The email was printed to its console instead of sent."
               : undefined
           }
         >
@@ -346,7 +346,7 @@ function ResultView({
       <Panel
         className="mt-4"
         title="Raw response"
-        subtitle={outcome.ok ? undefined : "Engine returned an error — body below."}
+        subtitle={outcome.ok ? undefined : "Engine returned an error. Body below."}
       >
         <JsonBlock json={responseJson} tone={outcome.ok ? "default" : "error"} />
       </Panel>

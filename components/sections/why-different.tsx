@@ -6,7 +6,7 @@ const reasons = [
   {
     icon: UserRound,
     title: "Personal, not generic",
-    body: "Written around your goals and your tasks — not a one-size-fits-all quote pulled from a database.",
+    body: "Written around your goals and your tasks, not a one-size-fits-all quote pulled from a database.",
   },
   {
     icon: RefreshCw,
@@ -21,7 +21,7 @@ const reasons = [
   {
     icon: Settings2,
     title: "You’re in control",
-    body: "Choose your tone and send time. Pause, change, or stop whenever you like — no friction, no guilt.",
+    body: "Choose your tone and send time. Pause, change, or stop whenever you like, no friction, no guilt.",
   },
 ];
 

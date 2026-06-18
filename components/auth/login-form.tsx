@@ -86,7 +86,7 @@ export function LoginForm() {
       </Button>
 
       <p className="mt-4 text-center text-xs text-ink-soft">
-        No password needed — we&apos;ll email you a secure one-time link.
+        No password needed. We&apos;ll email you a secure one-time link.
       </p>
     </form>
   );

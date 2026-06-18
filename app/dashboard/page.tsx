@@ -206,7 +206,7 @@ export default async function DashboardPage() {
               </ul>
             ) : (
               <p className="text-ink-soft">
-                Your first email is on its way — sent mornings will appear here.
+                Your first email is on its way. Sent mornings will appear here.
               </p>
             )}
           </Card>

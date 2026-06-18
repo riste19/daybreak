@@ -18,15 +18,10 @@ export const site = {
    * custom domain once you have one); falls back to the placeholder for local
    * dev. Trailing slashes are stripped so URL joins stay clean.
    */
-  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://daybreak.email").replace(
+  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://daybreakmail.com").replace(
     /\/+$/,
     "",
   ),
   /** Contact address shown in the footer. */
   contactEmail: "gorgikos20@gmail.com",
-  /** Placeholder social link (swap for your real handle). */
-  social: {
-    label: "@daybreak",
-    href: "https://x.com/daybreak",
-  },
 } as const;

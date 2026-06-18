@@ -113,7 +113,7 @@ function BillingToggle({
       </div>
       <p className="inline-flex items-center gap-1.5 text-sm text-primary">
         <Sparkles className="size-3.5" aria-hidden />
-        Save with annual — two months free.
+        Save with annual, two months free.
       </p>
     </div>
   );
@@ -332,7 +332,7 @@ function SuccessPanel({ message, onClose }: { message: string; onClose: () => vo
         </Button>
       </div>
       <p className="mt-5 text-sm text-ink-soft">
-        Manage it anytime —{" "}
+        Manage it anytime.{" "}
         <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
           sign in
         </Link>{" "}
@@ -467,7 +467,7 @@ function CheckoutForm({
       <p className="mt-4 flex items-start gap-1.5 text-xs text-ink-soft">
         <CreditCard className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
         <span>
-          Mock payment — no real charge. Test card{" "}
+          Mock payment, no real charge. Test card{" "}
           <span className="font-medium text-ink">4242 4242 4242 4242</span>, any future
           date, any CVC. Your 7-day trial starts now.
         </span>
