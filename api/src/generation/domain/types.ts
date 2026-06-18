@@ -15,6 +15,16 @@ export const TONES = ["gentle", "direct", "playful", "stoic"] as const;
 export const ToneSchema = z.enum(TONES);
 export type Tone = z.infer<typeof ToneSchema>;
 
+/* ─────────────────────────── Intensity ───────────────────────────────── */
+
+/**
+ * Delivery intensity — how blunt/forceful the voice is. Orthogonal to Tone
+ * (set by mood.directness in the questionnaire). Mirrors lib/onboarding.
+ */
+export const INTENSITIES = ["soft", "balanced", "direct"] as const;
+export const IntensitySchema = z.enum(INTENSITIES);
+export type Intensity = z.infer<typeof IntensitySchema>;
+
 /* ───────────────────────────── Theme ─────────────────────────────────── */
 
 export const THEMES = [
@@ -37,6 +47,17 @@ export const PreferredThemeSchema = z.object({
   weight: z.number().finite(),
 });
 export type PreferredTheme = z.infer<typeof PreferredThemeSchema>;
+
+/**
+ * Onboarding-derived focus area: a selected life-area category id and its weight
+ * (from resolveAnswers' `params.focusAreas`, sorted most → least). Anchors which
+ * area(s) the email centers on; the prompt renders these to set priority.
+ */
+export const FocusAreaSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  weight: z.number().finite(),
+});
+export type FocusArea = z.infer<typeof FocusAreaSchema>;
 
 /* ─────────────────────────── GenerationInput ─────────────────────────── */
 
@@ -67,8 +88,12 @@ export const GenerationInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   primaryGoal: z.string().trim().min(1).max(150),
   tone: ToneSchema,
+  /** Delivery intensity, orthogonal to tone. Defaults to balanced if unset. */
+  intensity: IntensitySchema.default("balanced"),
   customNotes: z.string().trim().max(300).optional(),
   contextLines: z.array(z.string().max(200)).max(20).default([]),
+  /** Selected life areas, weighted + sorted (most → least). Anchors the email. */
+  focusAreas: z.array(FocusAreaSchema).max(10).default([]),
   preferredThemes: z.array(PreferredThemeSchema).max(6).default([]),
   recentThemes: z.array(ThemeSchema).max(7).default([]),
   /**

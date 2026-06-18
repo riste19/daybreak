@@ -1,0 +1,26 @@
+name: Daily send cron
+
+# Drives the daily-email cron frequently so each subscriber's per-user send_time +
+# timezone is honored. The endpoint (app/api/cron/send-daily) is built to run
+# every ~15 min — it sends only to subscribers whose local clock has passed their
+# slot, once per local day (idempotent). Vercel Hobby caps crons at once/day, so we
+# schedule from GitHub Actions instead.
+#
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   CRON_SECRET       — must match the CRON_SECRET set on Vercel (endpoint 401s otherwise)
+#   CRON_ENDPOINT_URL — e.g. https://daybreakmail.com/api/cron/send-daily
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 min (UTC); the route filters by each user's slot
+  workflow_dispatch: {} # allow manual runs from the Actions tab for testing
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily send
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.CRON_ENDPOINT_URL }}"

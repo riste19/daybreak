@@ -16,7 +16,7 @@
  */
 
 import { resolveAnswers, type AnswerSet } from "./resolveAnswers";
-import type { Theme, Tone } from "./onboarding-schema";
+import type { Intensity, Theme, Tone } from "./onboarding-schema";
 import type { OutputPlan } from "@/lib/email/layout";
 
 /* ─────────────────────── Engine contract (mirror) ───────────────────────
@@ -29,12 +29,21 @@ export interface PreferredTheme {
   weight: number;
 }
 
+export interface FocusArea {
+  id: string;
+  weight: number;
+}
+
 export interface GenerationInput {
   name: string;
   primaryGoal: string;
   tone: Tone;
+  /** How blunt/forceful the delivery should be (orthogonal to tone). */
+  intensity: Intensity;
   customNotes?: string;
   contextLines: string[];
+  /** Selected life areas, weighted + sorted (most → least). Anchors the email. */
+  focusAreas: FocusArea[];
   preferredThemes: PreferredTheme[];
   recentThemes: Theme[];
   /**
@@ -98,7 +107,9 @@ export function buildGenerationInput(answers: AnswerSet): GenerationInput {
     name,
     primaryGoal,
     tone: resolved.params.tone,
+    intensity: resolved.params.intensity,
     contextLines: stripDuplicateLines(resolved.contextLines, customNotes),
+    focusAreas: resolved.params.focusAreas,
     preferredThemes: resolved.params.preferredThemes,
     recentThemes: [],
   };
