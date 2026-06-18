@@ -23,5 +23,5 @@ export const site = {
     "",
   ),
   /** Contact address shown in the footer. */
-  contactEmail: "gorgikos20@gmail.com",
+  contactEmail: "hello@daybreakmail.com",
 } as const;
