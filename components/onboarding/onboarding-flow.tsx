@@ -18,6 +18,7 @@ import { CategoryGrid } from "./category-grid";
 import { CategoryStep } from "./category-step";
 import { UniversalStep } from "./universal-step";
 import { DebugReview } from "./debug-review";
+import { ReviewSend } from "./review-send";
 import { CustomizeScreen } from "@/components/email-builder/customize-screen";
 import { ProgressDots } from "./progress-dots";
 
@@ -33,7 +34,7 @@ const MAX_CATEGORIES = 3;
  * Navigation index runs over [intro, ...selectedCategories, universal]. The
  * confirmation screen is shown once `submitted` is true.
  */
-export function OnboardingFlow() {
+export function OnboardingFlow({ isOwner = false }: { isOwner?: boolean }) {
   const [selected, setSelected] = React.useState<string[]>([]);
   const [values, setValues] = React.useState<Values>({});
   const [index, setIndex] = React.useState(0);
@@ -144,8 +145,15 @@ export function OnboardingFlow() {
                 requestAnimationFrame(() => topRef.current?.scrollIntoView({ block: "start" }));
               }}
             />
-          ) : (
+          ) : isOwner ? (
             <DebugReview
+              input={input}
+              emailLayout={emailLayout}
+              to={email.trim()}
+              onBackToEdit={() => setStage("customize")}
+            />
+          ) : (
+            <ReviewSend
               input={input}
               emailLayout={emailLayout}
               to={email.trim()}
