@@ -61,6 +61,8 @@ export class DeliveryService {
         }
       : null;
 
+    const unsubscribeUrl = `${this.config.appUrl}/unsubscribe`;
+
     const { html, text } = renderDailyEmail(
       {
         subject: result.subject,
@@ -69,7 +71,7 @@ export class DeliveryService {
         theme: result.theme,
         layout,
       },
-      { upgrade, unsubscribeUrl: `${this.config.appUrl}/unsubscribe` },
+      { upgrade, unsubscribeUrl },
     );
 
     const receipt = await this.email.send({
@@ -77,6 +79,9 @@ export class DeliveryService {
       subject: result.subject,
       html,
       text,
+      // Same target as the footer link; emitted as the List-Unsubscribe header
+      // for better inbox placement (the visible footer link is unaffected).
+      listUnsubscribeUrl: unsubscribeUrl,
     });
 
     this.logger.log(

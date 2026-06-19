@@ -11,6 +11,14 @@ export interface OutgoingEmail {
   html: string;
   /** Plain-text alternative — required for deliverability, never optional. */
   text: string;
+  /**
+   * Absolute URL for the `List-Unsubscribe` header (RFC 2369). When set, the
+   * client emits the header so mailbox providers (Gmail etc.) surface a native
+   * unsubscribe control and treat the message as a well-behaved sender — which
+   * helps inbox placement. This is separate from, and additive to, the visible
+   * unsubscribe link rendered in the email footer.
+   */
+  listUnsubscribeUrl?: string;
 }
 
 export interface SendReceipt {
