@@ -58,6 +58,8 @@ describe("DeliveryService.sendDaily", () => {
     expect(sentEmails[0].subject).toBe(GENERATION_RESULT.subject);
     expect(sentEmails[0].html).toContain("Start small today.");
     expect(sentEmails[0].text).toContain("Start small today.");
+    // The List-Unsubscribe header URL is threaded through to the client.
+    expect(sentEmails[0].listUnsubscribeUrl).toBe("https://test.example/unsubscribe");
 
     expect(result).toEqual({
       to: "maya@example.com",

@@ -36,6 +36,13 @@ export class ResendClient implements EmailClient {
         html: email.html,
         text: email.text,
         ...(this.config.emailReplyTo ? { reply_to: this.config.emailReplyTo } : {}),
+        // List-Unsubscribe (RFC 2369): a standard signal that improves inbox
+        // placement and gives Gmail/Apple Mail a native unsubscribe affordance.
+        // The URL must be angle-bracketed. (One-click POST per RFC 8058 would
+        // additionally need the /unsubscribe endpoint to accept POST.)
+        ...(email.listUnsubscribeUrl
+          ? { headers: { "List-Unsubscribe": `<${email.listUnsubscribeUrl}>` } }
+          : {}),
       }),
     });
 
