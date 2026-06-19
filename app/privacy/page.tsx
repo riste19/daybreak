@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 // Keep this current whenever the substance of the policy changes.
-const LAST_UPDATED = "18 June 2026";
+const LAST_UPDATED = "19 June 2026";
 
 export default function PrivacyPage() {
   return (
@@ -82,10 +82,11 @@ export default function PrivacyPage() {
 
           <h3>Analytics (only after you opt in)</h3>
           <p>
-            We use <strong>PostHog</strong> for product analytics. Only when you
-            accept, PostHog sets a first-party cookie to recognise your
-            browser across pages in a visit. Here’s what that data is, and what it
-            is not:
+            With your consent we use a{" "}
+            <strong>privacy-friendly third-party analytics provider</strong> for
+            product analytics. Only when you accept, it sets a first-party cookie to
+            recognise your browser across pages in a visit. Here’s what that data is,
+            and what it is not:
           </p>
           <ul>
             <li>
@@ -122,23 +123,15 @@ export default function PrivacyPage() {
 
           <h2>Who processes your data</h2>
           <p>
-            We work with a small set of trusted providers (“processors”) who only
-            handle data on our instructions:
+            We share data only with a small set of trusted service providers
+            (“processors”) who act on our instructions, covering{" "}
+            <strong>
+              email delivery, website hosting, data storage, and (with your consent)
+              product analytics
+            </strong>
+            . They may only use it to provide those services to us, never for their
+            own purposes.
           </p>
-          <ul>
-            <li>
-              <strong>Resend</strong>: sends the emails.
-            </li>
-            <li>
-              <strong>Supabase</strong>: stores your preferences and history.
-            </li>
-            <li>
-              <strong>PostHog</strong>: product analytics, only after consent.
-            </li>
-            <li>
-              <strong>Vercel</strong>: hosts the website.
-            </li>
-          </ul>
           <p>
             Some of these process data outside your country (for example, in the
             United States). Where that happens, transfers are covered by
