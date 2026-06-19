@@ -16,7 +16,9 @@ This repo is **not** a monorepo workspace — it's two separately-installed pack
   template, and sends it (Resend, or console in dev). **It has no database.**
 
 They talk **only over HTTP**: `app/api/{generate,send}/route.ts` and the daily cron POST to
-`${DAYBREAK_API_URL}` → the engine's `/generate/preview` and `/delivery/send`. **The frontend
+`${DAYBREAK_API_URL}` → the engine's `/generate/preview` and `/delivery/send`, authenticated
+server-to-server with an `x-api-key` shared secret (`lib/engine.ts:engineHeaders()` ↔ the
+engine's global `EngineAuthGuard` / `ENGINE_API_KEY` — see Gotchas). **The frontend
 never imports from `api/`.** Cross-boundary contracts are kept as **hand-synced mirrored copies**
 on each side — e.g. `lib/onboarding/buildGenerationInput.ts` ↔ `api/src/generation/domain/types.ts`,
 and `lib/email/layout.ts` ↔ `api/src/delivery/domain/layout.ts`. Tone/Theme vocabularies are
@@ -40,13 +42,27 @@ There are **two entry funnels**, both writing via **Server Actions** (there is n
 `app/login/actions.ts` (`sendMagicLink` → `supabase.auth.signInWithOtp`) +
 `app/auth/callback/route.ts` (`exchangeCodeForSession`); session read server-side via
 `lib/supabase/server.ts` (`getSessionUser`, `createSupabaseServerClient`). `/dashboard` and
-`/dashboard/edit` (prefs editor) are auth-gated (redirect to `/login`).
+`/dashboard/edit` (prefs editor) are auth-gated (redirect to `/login`). **Note:** `/login` is
+**sign-in only** (`shouldCreateUser: false`) — accounts are created **only** via `/subscribe`,
+so an email with no account silently gets no link.
 
-**The daily cron** — a **Vercel Cron** (`vercel.json` `0 6 * * *` → `app/api/cron/send-daily`,
-guarded by `CRON_SECRET`) builds a `SendDailyInput` from each active subscriber's stored prefs
-(+ recent themes) via `getActiveSubscribersForSend()`/`buildSendInputFromPrefs()`, POSTs to the
-engine's `/delivery/send`, and records `generated_emails` for idempotency. `app/unsubscribe`
-cancels a subscription. **Per-user `send_time` is NOT yet honored** — see Gotchas.
+**Owner-gated debug:** `/start`'s final review step is the dev `DebugReview` (editable system
+prompt, request JSON, raw engine response) for **owners only** — `app/start/page.tsx` reads the
+session and passes an `isOwner` boolean (`lib/admin.ts:isOwnerEmail`, a **server-only** allowlist;
+the client never sees the emails). Everyone else gets the clean `components/onboarding/review-send.tsx`,
+which still sends the trial email.
+
+**The daily cron** — `app/api/cron/send-daily/route.ts` (a **GET**, guarded by
+`Authorization: Bearer <CRON_SECRET>`) builds a `SendDailyInput` from each active subscriber's
+stored prefs (+ recent themes) via `getActiveSubscribersForSend()`/`buildSendInputFromPrefs()`,
+POSTs to the engine's `/delivery/send`, and records `generated_emails`. It is **pull-based and
+written to run frequently (≈ every 15 min)**: each run emails only subscribers whose **local
+clock has passed their `send_time` today** (`timezone`-aware via `localClock()`) and who haven't
+been emailed yet this **local** day (`wasEmailSentSince()` idempotency — so extra calls never
+double-send). **Per-user `send_time`/`timezone` IS honored** (default `07:00`, `MAX_PER_RUN=100`).
+The real scheduler is a **GitHub Actions** workflow (`.github/workflows/cron-send-daily.yml`,
+`*/15 * * * *`) because Vercel Hobby caps crons at once/day; `vercel.json`'s `0 6 * * *` is a
+harmless daily backstop. `app/unsubscribe` cancels a subscription.
 `lib/supabase/storage.ts` holds the anon/RLS helpers plus the **service-role** helpers used by the
 cron/actions (`recordTrialLead`, `provisionSubscriber`, `preferencesFromTrialLead`,
 `getActiveSubscribersForSend`).
@@ -92,9 +108,17 @@ Engine (`api/`):
   `next.config.ts`; a root `mdx-components.tsx` is **required** for the `content/blog` MDX hub.
 - The Supabase generated types (`lib/supabase/types.ts`) are hand-maintained and have drifted from
   the SQL migrations before — verify a column exists in `supabase/migrations/` before trusting the type.
-- **`send_time` is stored but ignored.** Migration 006 made `user_preferences.send_time` an `HH:MM`
-  string (+ `timezone`), but the cron sends to **all** active subs at fixed UTC 06:00 — it doesn't
-  filter by timezone/send_time. Don't assume per-user timing works (v2 = an hourly GitHub Actions cron).
+- **Per-user `send_time` works only while the GitHub Actions cron runs.** The route filters by
+  each subscriber's local `send_time`/`timezone` (migration 006), so the schedule must hit it
+  **frequently** (`*/15`). That cadence is `.github/workflows/cron-send-daily.yml`, **not**
+  `vercel.json` (Hobby = once/day). Two scheduled-workflow caveats: it fires **only from `main`**
+  and **auto-disables after ~60 days of repo inactivity** — if sends silently stop, check the
+  Actions tab first. Needs repo secrets `CRON_SECRET` (must equal Vercel's) + `CRON_ENDPOINT_URL`.
+- **`ENGINE_API_KEY` must match on both sides — or be unset on both.** In production the engine's
+  `EngineAuthGuard` refuses every request with `401 "Engine is not configured for authenticated
+  access"` when it's unset, and `401 "Invalid or missing x-api-key"` when it differs from what the
+  frontend sends (`lib/engine.ts`). Set the same value on Render (engine) **and** Vercel (frontend),
+  or unset on both (dev). Setting one side only is a silent prod outage.
 - **Trial-length mismatch:** `lib/pricing.ts` free tier says "7 personalized mornings" but
   `app/subscribe/actions.ts` sets `TRIAL_DAYS = 3`. Known inconsistency.
 - **Checkout is mock**, not Stripe (`app/subscribe/actions.ts` validates card format only;
