@@ -19,32 +19,32 @@ export async function Hero() {
       <div className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-20 text-center">
         <span
           className="animate-dawn-rise mb-6 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-white/5 px-4 py-1.5 text-sm font-medium text-gold backdrop-blur-sm"
-          style={{ animationDelay: "150ms" }}
+          style={{ animationDelay: "90ms" }}
         >
           <span className="size-1.5 rounded-full bg-gold" aria-hidden />
           Your daily nudge, delivered at first light
         </span>
 
         <h1
-          className="animate-dawn-rise font-display text-4xl font-medium leading-[1.08] tracking-tight text-cream sm:text-5xl md:text-6xl"
-          style={{ animationDelay: "430ms" }}
+          className="animate-dawn-rise-text font-display text-4xl font-medium leading-[1.08] tracking-tight text-cream sm:text-5xl md:text-6xl"
+          style={{ animationDelay: "230ms" }}
         >
           Start each morning with a message made just for you.
         </h1>
 
         <p
           className="animate-dawn-rise mt-6 max-w-xl text-lg leading-relaxed text-cream/75"
-          style={{ animationDelay: "710ms" }}
+          style={{ animationDelay: "370ms" }}
         >
           {site.name} is a personalized daily motivational email, one short,
-          thoughtfully written note at dawn, shaped around your goals, your
+          thoughtfully written note, shaped around your goals, your
           tasks, and the tone you choose. No app to open, no feed to scroll.
           Just a calm reason to begin with intention.
         </p>
 
         <div
           className="animate-dawn-rise mt-9 flex flex-col items-center gap-3"
-          style={{ animationDelay: "990ms" }}
+          style={{ animationDelay: "500ms" }}
         >
           <Button asChild size="lg" variant="glow">
             <Link

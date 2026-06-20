@@ -12,12 +12,14 @@ const inter = Inter({
 });
 
 // Characterful display face for headlines — warm, with a touch of personality.
+// Only ever rendered at `font-medium` / normal (every `font-display` usage is
+// weight 500, no italic), so we ship just that one face instead of 6 — it cuts
+// ~5 preloaded woff2 files off the mobile critical path with no visual change.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  weight: ["500"],
 });
 
 export const metadata: Metadata = {

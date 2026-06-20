@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeft, Check, Copy, Mail, Send, TriangleAlert } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/components/analytics/posthog-context";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,7 @@ export function DebugReview({ input, emailLayout, to, onBackToEdit }: DebugRevie
       if (res.ok) {
         // Funnel: distinguish a generated preview from a real delivery.
         const theme = (asGenerationResult(data) ?? asSendResult(data))?.theme;
-        posthog.capture(target === "deliver" ? "email_sent" : "email_previewed", { theme });
+        posthog?.capture(target === "deliver" ? "email_sent" : "email_previewed", { theme });
       }
     } catch (err) {
       setOutcome({

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeft, Check, Mail, TriangleAlert } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/components/analytics/posthog-context";
 
 import { Button } from "@/components/ui/button";
 import { toOutputPlan, type EmailLayout } from "@/lib/email/layout";
@@ -52,7 +52,7 @@ export function ReviewSend({ input, emailLayout, to, onBackToEdit }: ReviewSendP
         return;
       }
       const data = (await res.json().catch(() => null)) as { theme?: string } | null;
-      posthog.capture("email_sent", { theme: data?.theme });
+      posthog?.capture("email_sent", { theme: data?.theme });
       setPhase("sent");
     } catch {
       setPhase("error");
