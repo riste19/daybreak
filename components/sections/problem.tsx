@@ -9,22 +9,25 @@ export function Problem() {
             Sound familiar?
           </p>
           <h2 className="mt-4 font-display text-3xl font-medium leading-tight text-ink sm:text-4xl">
-            Motivation fades. The apps pile up. The quotes ring hollow.
+            You’ve tried this before. You know how it usually goes.
           </h2>
         </Reveal>
 
         <Reveal delay={120}>
           <div className="mt-8 space-y-5 text-left text-lg leading-relaxed text-ink-soft">
             <p>
-              You started with real intention. Then the habit tracker became one
-              more red badge to avoid. The motivation app turned into a feed you
-              scroll past. And a generic “rise and grind” quote has never once
-              known what you’re actually carrying.
+              It starts with real intention. Then the habit tracker turns into
+              one more red badge you’re dodging. The app becomes a feed you
+              scroll past on your way to something else. And that “rise and grind”
+              quote? It has never once known what you’re actually carrying that
+              day.
             </p>
             <p>
-              The truth is simple: encouragement only lands when it’s about{" "}
-              <span className="font-medium text-ink">you</span>: your goal, this
-              week, today. Not everyone. Not in general. You.
+              The problem was never your willpower. It’s that none of it knew the
+              first thing about{" "}
+              <span className="font-extrabold text-primary">You</span>, your Friday
+              deadline, the chapter you avoid opening. A note written for you
+              is harder to ignore than a quote written for everyone.
             </p>
           </div>
         </Reveal>

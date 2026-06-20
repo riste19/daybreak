@@ -22,24 +22,23 @@ export async function Hero() {
           style={{ animationDelay: "90ms" }}
         >
           <span className="size-1.5 rounded-full bg-gold" aria-hidden />
-          Your daily nudge, delivered at first light
+          One positive message to start every day
         </span>
 
         <h1
           className="animate-dawn-rise-text font-display text-4xl font-medium leading-[1.08] tracking-tight text-cream sm:text-5xl md:text-6xl"
           style={{ animationDelay: "230ms" }}
         >
-          Start each morning with a message made just for you.
+          Start each morning with a message made just for you
         </h1>
 
         <p
           className="animate-dawn-rise mt-6 max-w-xl text-lg leading-relaxed text-cream/75"
           style={{ animationDelay: "370ms" }}
         >
-          {site.name} is a personalized daily motivational email, one short,
-          thoughtfully written note, shaped around your goals, your
-          tasks, and the tone you choose. No app to open, no feed to scroll.
-          Just a calm reason to begin with intention.
+          {site.name} sends you a personalized daily motivational email,
+          a short thoughtfully written note, shaped around your intentions, your
+          goals, and the tone you choose. No apps, no feeds, just a calm and positive headstart for your day.
         </p>
 
         <div
@@ -58,7 +57,7 @@ export async function Hero() {
           <p className="text-sm text-cream/55">
             {loggedIn
               ? "Welcome back. Manage your mornings anytime."
-              : "Free to start. Takes about a minute, pick as little as one thing."}
+              : "Free to start. Setup in a minute, and one goal is enough to begin."}
           </p>
         </div>
       </div>

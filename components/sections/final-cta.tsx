@@ -18,8 +18,8 @@ export async function FinalCta() {
           Tomorrow could start a little differently.
         </h2>
         <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-cream/75">
-          Tell us what your mornings should focus on, and wake up to a message
-          made for you. It only takes a minute.
+          Tell us what you’re working on, and the first one lands tomorrow
+          morning. Setup takes about a minute.
         </p>
 
         <div className="mx-auto mt-9 flex flex-col items-center gap-3">
@@ -35,7 +35,7 @@ export async function FinalCta() {
           <p className="text-sm text-cream/55">
             {loggedIn
               ? "Manage your plan and preferences anytime."
-              : "No app, no feed. One calm email a day."}
+              : "Free to start. One short email a day, and you can stop whenever."}
           </p>
         </div>
       </div>
