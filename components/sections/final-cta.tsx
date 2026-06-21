@@ -2,11 +2,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { isLoggedIn } from "@/lib/supabase/server";
 
-export async function FinalCta() {
-  const loggedIn = await isLoggedIn();
-
+export function FinalCta({ loggedIn }: { loggedIn: boolean }) {
   return (
     <section id="join" className="dawn-glow relative overflow-hidden">
       <div
@@ -35,7 +32,7 @@ export async function FinalCta() {
           <p className="text-sm text-cream/55">
             {loggedIn
               ? "Manage your plan and preferences anytime."
-              : "Free to start. One short email a day, and you can stop whenever."}
+              : "Free to start, no card needed — one short email a day, and you can stop in two clicks."}
           </p>
         </div>
       </div>

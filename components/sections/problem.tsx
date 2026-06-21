@@ -31,6 +31,14 @@ export function Problem() {
             </p>
           </div>
         </Reveal>
+
+        <Reveal delay={240}>
+          <p className="mt-8 text-xl font-medium leading-snug text-ink sm:text-2xl">
+            That gap — between advice for everyone and a note that actually knows
+            your week — is the whole reason{" "}
+            <span className="font-display text-primary">Daybreak</span> exists.
+          </p>
+        </Reveal>
       </div>
     </section>
   );

@@ -1,14 +1,14 @@
 import { Hr, Link, Section, Text } from "@react-email/components";
 import * as React from "react";
 
-import { links, tagline } from "../config";
+import { links, tagline, TRIAL_LENGTH_DAYS } from "../config";
 import { theme } from "../theme";
 import { CTAButton } from "./CTAButton";
 
 /**
  * The shared footer. Its CTA and legal line vary by `variant`:
- *   • sample — a prominent "Start your 7-day free trial →" button (the recipient
- *     isn't subscribed yet).
+ *   • sample — a prominent "Start your N-day free trial →" button (the recipient
+ *     isn't subscribed yet; N = TRIAL_LENGTH_DAYS).
  *   • trial  — a calm "Manage your preferences →" link (no hard sell).
  *   • paid   — an inline row: Manage preferences · Change tone · Unsubscribe.
  *
@@ -70,7 +70,7 @@ export function Footer({
       {variant === "sample" ? (
         <Section style={{ paddingBottom: space.md }}>
           <CTAButton
-            label={ctaText ?? "Start your 7-day free trial →"}
+            label={ctaText ?? `Start your ${TRIAL_LENGTH_DAYS}-day free trial →`}
             href={ctaUrl ?? links.subscribe}
           />
         </Section>

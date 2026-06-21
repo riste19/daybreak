@@ -2,11 +2,11 @@ import * as React from "react";
 
 import { DailyBody } from "../components/DailyBody";
 import { EmailLayout } from "../components/EmailLayout";
-import { links } from "../config";
+import { links, TRIAL_LENGTH_DAYS } from "../config";
 
 /**
  * DailyTrialEmail — the daily email for a subscriber currently in their free
- * trial. Identical body to the paid daily, plus one subtle "Day X of 7" line and
+ * trial. Identical body to the paid daily, plus one subtle "Day X of N" line and
  * a manage-preferences footer. No hard sell — the trial sells itself.
  */
 export interface DailyTrialEmailProps {
@@ -16,7 +16,7 @@ export interface DailyTrialEmailProps {
   themeOfDay: string;
   /** Which day of the trial this is (1-based). */
   trialDay: number;
-  /** Total trial length in days. Default 7. */
+  /** Total trial length in days. Defaults to the shared TRIAL_LENGTH_DAYS. */
   trialLength?: number;
   unsubscribeUrl: string;
   /** Preferences editor (defaults to the dashboard editor). */
@@ -30,7 +30,7 @@ export function DailyTrialEmail({
   tone,
   themeOfDay,
   trialDay,
-  trialLength = 7,
+  trialLength = TRIAL_LENGTH_DAYS,
   unsubscribeUrl,
   manageUrl = links.preferences,
   preview = "Your morning, made for today.",
@@ -59,8 +59,8 @@ DailyTrialEmail.PreviewProps = {
   ],
   tone: "direct",
   themeOfDay: "momentum",
-  trialDay: 3,
-  trialLength: 7,
+  trialDay: 2,
+  trialLength: TRIAL_LENGTH_DAYS,
   unsubscribeUrl: "https://daybreakmail.com/unsubscribe?t=trial-token",
 } satisfies DailyTrialEmailProps;
 

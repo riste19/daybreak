@@ -3,12 +3,11 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { site } from "@/lib/config";
-import { isLoggedIn } from "@/lib/supabase/server";
 
-export async function Hero() {
-  // Signed in → the primary CTA points to the dashboard (and signals you're in).
-  const loggedIn = await isLoggedIn();
-
+// Signed in → the primary CTA points to the dashboard (and signals you're in).
+// `loggedIn` is resolved once by the page and passed down (shared with the
+// sticky header and final CTA) to avoid repeating the auth round-trip.
+export function Hero({ loggedIn }: { loggedIn: boolean }) {
   return (
     <section className="dawn-glow relative flex min-h-dvh flex-col overflow-hidden">
       {/* Rising sun — purely decorative. Blooms up from the horizon on load. */}
@@ -22,7 +21,7 @@ export async function Hero() {
           style={{ animationDelay: "90ms" }}
         >
           <span className="size-1.5 rounded-full bg-gold" aria-hidden />
-          One positive message to start every day
+          A short, personal email — every morning
         </span>
 
         <h1
@@ -36,9 +35,9 @@ export async function Hero() {
           className="animate-dawn-rise mt-6 max-w-xl text-lg leading-relaxed text-cream/75"
           style={{ animationDelay: "370ms" }}
         >
-          {site.name} sends you a personalized daily motivational email,
-          a short thoughtfully written note, shaped around your intentions, your
-          goals, and the tone you choose. No apps, no feeds, just a calm and positive headstart for your day.
+          {site.name} writes you one short motivational email each morning —
+          shaped around your goals, your tasks, and the tone you choose. No apps,
+          no feeds, no streaks to keep up. Just a calm head start, in your inbox.
         </p>
 
         <div
@@ -57,7 +56,7 @@ export async function Hero() {
           <p className="text-sm text-cream/55">
             {loggedIn
               ? "Welcome back. Manage your mornings anytime."
-              : "Free to start. Setup in a minute, and one goal is enough to begin."}
+              : "Free to start, no card needed — about a minute to set up, and you can leave in two clicks."}
           </p>
         </div>
       </div>
