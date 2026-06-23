@@ -26,6 +26,13 @@ export const UNSUBSCRIBE_MAILTO = `mailto:unsubscribe@${DOMAIN}?subject=unsubscr
 export const tagline = "A fresh, personal nudge in your inbox every morning.";
 
 /**
+ * Free-trial length in days. The single source of truth for every "N-day trial"
+ * string across these templates. MUST stay in sync with the app's provisioning
+ * value (`TRIAL_DAYS` in app/subscribe/actions.ts) — they are hand-synced.
+ */
+export const TRIAL_LENGTH_DAYS = 3;
+
+/**
  * Default brand links. Callers should pass per-recipient (tokenised) URLs into
  * the templates instead — these power previews and act as fallbacks.
  */

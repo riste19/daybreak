@@ -67,8 +67,8 @@ export const plans: Plan[] = [
     audience: "For seeing whether a morning email is for you.",
     features: [
       {
-        label: "7 personalized mornings",
-        detail: "A full week to feel the difference — no card needed.",
+        label: "3 personalized mornings",
+        detail: "Three mornings to feel the difference — no card needed.",
       },
       { label: "Up to 3 focus areas" },
       { label: "Choose your tone", detail: "Gentle, direct, playful, or stoic." },

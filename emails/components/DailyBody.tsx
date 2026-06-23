@@ -20,7 +20,7 @@ export interface DailyBodyProps {
   tone: string;
   /** Display theme of the day, e.g. "reflection" → "Reflection". */
   themeOfDay: string;
-  /** Optional subtle line under the meta caption (e.g. "Day 3 of 7 in your free trial."). */
+  /** Optional subtle line under the meta caption (e.g. "Day 2 of 3 in your free trial."). */
   note?: string;
 }
 

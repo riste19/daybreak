@@ -7,7 +7,7 @@ import { links } from "../config";
 import { theme } from "../theme";
 
 /**
- * TrialEndingEmail — sent ~24h before the first charge (day 6 of a 7-day trial).
+ * TrialEndingEmail — sent ~24h before the first charge (the final day of the trial).
  * A friendly heads-up: states the amount and date, gives a clear way to manage
  * or cancel. Reassuring, not pushy — the goal is no surprises, not pressure.
  */
@@ -66,7 +66,7 @@ export function TrialEndingEmail({
 
       <Text style={paragraph}>{greeting}</Text>
       <Text style={paragraph}>
-        We hope the past week of mornings has been worth waking up to. Just so
+        We hope the past few mornings have been worth waking up to. Just so
         there are no surprises: your free trial ends tomorrow, and your{" "}
         {planName} subscription will begin.
       </Text>

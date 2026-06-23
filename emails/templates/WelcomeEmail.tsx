@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { CTAButton } from "../components/CTAButton";
 import { EmailLayout } from "../components/EmailLayout";
-import { links } from "../config";
+import { links, TRIAL_LENGTH_DAYS } from "../config";
 import { theme } from "../theme";
 
 /**
@@ -16,7 +16,7 @@ import { theme } from "../theme";
  */
 export interface WelcomeEmailProps {
   firstName?: string;
-  /** Trial length in days. Default 7. */
+  /** Trial length in days. Defaults to the shared TRIAL_LENGTH_DAYS. */
   trialLength?: number;
   /** Where the "Set your preferences" CTA points. */
   preferencesUrl?: string;
@@ -36,7 +36,7 @@ const paragraph: React.CSSProperties = {
 
 export function WelcomeEmail({
   firstName,
-  trialLength = 7,
+  trialLength = TRIAL_LENGTH_DAYS,
   preferencesUrl = links.preferences,
   unsubscribeUrl,
   preview = "Welcome — your first morning lands tomorrow.",
@@ -84,7 +84,7 @@ export function WelcomeEmail({
 
 WelcomeEmail.PreviewProps = {
   firstName: "Mara",
-  trialLength: 7,
+  trialLength: TRIAL_LENGTH_DAYS,
   unsubscribeUrl: "https://daybreakmail.com/unsubscribe?t=welcome-token",
 } satisfies WelcomeEmailProps;
 
