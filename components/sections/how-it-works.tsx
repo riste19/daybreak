@@ -5,18 +5,18 @@ import { Reveal } from "@/components/reveal";
 const steps = [
   {
     icon: Target,
-    title: "Tell it what you’re chasing",
-    body: "Answer a few quick questions about your goal, the tasks on your plate, and what matters right now. Takes about two minutes.",
+    title: "Tell us what you’re working on",
+    body: "A few questions about your goal and what’s actually on your plate this week. Two minutes, give or take.",
   },
   {
     icon: SlidersHorizontal,
-    title: "Pick your tone and your time",
-    body: "Gentle, direct, playful, or stoic, and the exact minute it arrives. Your morning, set up your way.",
+    title: "Pick a tone and a time",
+    body: "Gentle, blunt, or something in between — whatever you’ll actually read at 7 a.m. Then set the minute it lands.",
   },
   {
     icon: Sunrise,
-    title: "Wake up to a fresh email",
-    body: "Each morning, a short message written around your goals lands in your inbox. New every day, never a repeat.",
+    title: "Wake up to it",
+    body: "Each morning a new one shows up in your inbox, written around what you've told us. Your goals and intentions are tottaly customizable later.",
   },
 ];
 
@@ -29,7 +29,7 @@ export function HowItWorks() {
             How it works
           </p>
           <h2 className="mt-4 font-display text-3xl font-medium leading-tight text-ink sm:text-4xl">
-            Set it up once. Wake up to it every day.
+            Set it up once. After that, it just shows up.
           </h2>
         </Reveal>
 

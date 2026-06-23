@@ -76,12 +76,14 @@ the email client.
 
 ## Deployment
 
-Frontend → **Vercel** (project `daybreak-c5i4`); engine → **Render** (a long-running server;
-Vercel serverless can't host it). They're wired by the Vercel env var `DAYBREAK_API_URL`. Real
-inbox delivery requires a Resend-verified domain + `EMAIL_FROM`; until then the engine only truly
-delivers to the Resend account owner (others → `provider: "console"`). Canonicals/sitemap/OG read
-`site.url` from `NEXT_PUBLIC_SITE_URL` (`lib/config.ts`). `api/README.md` documents the engine's
-endpoints and env.
+**Live in production at [daybreakmail.com](https://daybreakmail.com).** Frontend → **Vercel**
+(project `daybreak-c5i4`); engine → **Render** (a long-running server; Vercel serverless can't host
+it). They're wired by the Vercel env var `DAYBREAK_API_URL`. The Resend domain (`daybreakmail.com`)
+is **verified** and `EMAIL_FROM` is set to it, so the engine delivers real mail to **any** recipient
+(the old sandbox limitation — `onboarding@resend.dev` only reaching the Resend account owner, others
+→ `provider: "console"` — no longer applies in prod; it still does for a local engine using the
+sandbox sender). Canonicals/sitemap/OG read `site.url` from `NEXT_PUBLIC_SITE_URL` (`lib/config.ts`).
+`api/README.md` documents the engine's endpoints and env.
 
 ## Commands
 

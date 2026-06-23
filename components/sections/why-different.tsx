@@ -5,23 +5,23 @@ import { Reveal } from "@/components/reveal";
 const reasons = [
   {
     icon: UserRound,
-    title: "Personal, not generic",
-    body: "Written around your goals and your tasks, not a one-size-fits-all quote pulled from a database.",
+    title: "It’s actually about you",
+    body: "Every email is built from your goal and what’s on your plate that week. A quotes app sends the same line to ten thousand people; this one only knows about you.",
   },
   {
     icon: RefreshCw,
-    title: "Never repetitive",
-    body: "It remembers what it already said and rotates between themes, so day 30 feels as fresh as day 1.",
+    title: "It won’t repeat itself",
+    body: "It keeps track of what it’s already said and moves between themes, so the email on day 30 doesn’t read like day 3 reheated.",
   },
   {
     icon: MoonStar,
-    title: "Calm by design",
-    body: "It lives in your inbox, on your schedule. No notifications, no feed, no algorithm fighting for your attention.",
+    title: "It stays in your inbox",
+    body: "No notifications, nothing buzzing for your attention. It shows up once in the morning and then leaves you alone until tomorrow.",
   },
   {
     icon: Settings2,
-    title: "You’re in control",
-    body: "Choose your tone and send time. Pause, change, or stop whenever you like, no friction, no guilt.",
+    title: "Easy to walk away from",
+    body: "Change the tone, move the send time, or pause for a while. Unsubscribing takes two clicks, and we won’t chase you about it.",
   },
 ];
 
@@ -34,7 +34,7 @@ export function WhyDifferent() {
             Why it’s different
           </p>
           <h2 className="mt-4 font-display text-3xl font-medium leading-tight text-ink sm:text-4xl">
-            Not another app demanding your attention.
+            It’s email. That’s sort of the point.
           </h2>
         </Reveal>
 
