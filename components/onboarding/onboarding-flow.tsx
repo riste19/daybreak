@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "@/components/analytics/posthog-context";
 
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/config";
@@ -52,7 +52,7 @@ export function OnboardingFlow({ isOwner = false }: { isOwner?: boolean }) {
   React.useEffect(() => {
     if (viewed.current) return;
     viewed.current = true;
-    posthog.capture("start_viewed");
+    posthog?.capture("start_viewed");
   }, [posthog]);
 
   // Keep selected categories in schema order so steps + dots are predictable.
@@ -104,7 +104,7 @@ export function OnboardingFlow({ isOwner = false }: { isOwner?: boolean }) {
   const handleSubmit = () => {
     // The key funnel conversion: the visitor finished the questionnaire with a
     // goal + email. (categories/tone are useful breakdown properties.)
-    posthog.capture("onboarding_completed", {
+    posthog?.capture("onboarding_completed", {
       categories: selected.length,
       tone: suggestedTone,
     });
@@ -115,7 +115,7 @@ export function OnboardingFlow({ isOwner = false }: { isOwner?: boolean }) {
       email: email.trim(),
       selectedCategories: selected,
       values,
-      distinctId: posthog.get_distinct_id?.() ?? null,
+      distinctId: posthog?.get_distinct_id?.() ?? null,
     });
     // Map answers to the engine's request body. Email/sendTime are delivery
     // metadata and deliberately NOT part of GenerationInput.

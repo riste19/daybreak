@@ -32,7 +32,7 @@ const reassurances = [
 const faqs = [
   {
     q: "Is the free version really free?",
-    a: "Yes. First Light gives you a full week of personalized mornings with no card required, so you can feel the difference before deciding.",
+    a: "Yes. First Light gives you three personalized mornings with no card required, so you can feel the difference before deciding.",
   },
   {
     q: "What is the “daily customisation” I keep seeing?",

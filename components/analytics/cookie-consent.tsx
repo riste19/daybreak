@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePathname } from "next/navigation";
+import { usePostHog } from "./posthog-context";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,23 +24,23 @@ const CONSENT_KEY = "daybreak-cookie-consent"; // "accepted" | "declined"
 // Keep in sync with the `duration-300` transition below.
 const ANIM_MS = 300;
 
-// How far the visitor must scroll before the banner appears on a fresh visit.
-const SCROLL_TRIGGER_PX = 80;
+// Delay before the banner appears on each page, so it doesn't pop in mid-load.
+const SHOW_DELAY_MS = 1000;
 
 /**
  * Standard GDPR/ePrivacy cookie banner. No analytics are captured until the
- * visitor clicks Accept (PostHog stays opted out by default). On a fresh visit
- * — no stored choice — the banner slides in right away; once a choice is made
- * it animates out and doesn't reappear, but it can be reopened from the privacy
- * page.
+ * visitor clicks Accept (PostHog stays opted out by default). With no stored
+ * choice the banner slides in one second after the page loads; once a choice is
+ * made it animates out and doesn't reappear, but it can be reopened from the
+ * privacy page.
  */
 export function CookieConsent() {
   const posthog = usePostHog();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false); // present in the DOM
   const [shown, setShown] = useState(false); // animated in/out state
 
-  // First visit (no stored choice) → show the banner once the visitor scrolls
-  // down, so it doesn't interrupt the first impression of the page.
+  // No stored choice → show the banner one second after each page loads.
   useEffect(() => {
     let stored: string | null = null;
     try {
@@ -49,17 +50,9 @@ export function CookieConsent() {
     }
     if (stored) return;
 
-    const onScroll = () => {
-      if (window.scrollY > SCROLL_TRIGGER_PX) {
-        setMounted(true);
-        window.removeEventListener("scroll", onScroll);
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // Catch the case where the page loads already scrolled (e.g. restored position).
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const id = window.setTimeout(() => setMounted(true), SHOW_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [pathname]);
 
   // Allow the privacy page to reopen the banner to change/withdraw consent.
   useEffect(() => {

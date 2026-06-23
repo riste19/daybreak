@@ -8,6 +8,7 @@ import type {
   UserPreferences,
   GeneratedEmail,
   Subscription,
+  SubscriptionStatus,
   WaitlistEntry,
   TrialSend,
   OnboardingAnswer,
@@ -739,4 +740,199 @@ export async function cancelSubscriptionByEmail(email: string): Promise<boolean>
     .eq('user_id', user.id);
   if (error) throw new Error(`Failed to cancel subscription: ${error.message}`);
   return true;
+}
+
+// ============================================================================
+// ADMIN OVERVIEW (service role) — read-only DB snapshot for the owner-gated
+// /admin dashboard. Bypasses RLS so it sees every row; never reachable by a
+// non-owner (the route gates on lib/admin.ts:isOwnerEmail before calling this).
+// ============================================================================
+
+/** One subscriber row joined across the three account tables for the table view. */
+export interface AdminSubscriberRow {
+  user: User;
+  subscription: Subscription | null;
+  preferences: UserPreferences | null;
+}
+
+/** A recent daily send, with the recipient's email resolved for display. */
+export interface AdminRecentEmail extends GeneratedEmail {
+  email: string | null;
+}
+
+/** Everything the /admin overview renders in a single fetch. */
+export interface AdminOverview {
+  stats: {
+    users: number;
+    activeSubs: number;
+    trialSubs: number;
+    cancelledSubs: number;
+    trialLeads: number;
+    emailsToday: number;
+    emailsTotal: number;
+  };
+  /** Most-recent accounts first (capped — this is a snapshot, not a full export). */
+  subscribers: AdminSubscriberRow[];
+  /** Most-recent no-login /start leads first (capped). */
+  trialLeads: TrialSend[];
+  /** Most-recent daily sends first (capped). */
+  recentEmails: AdminRecentEmail[];
+}
+
+const ADMIN_ROW_CAP = 200;
+const ADMIN_FEED_CAP = 25;
+
+/** UTC midnight today, as an ISO string — the cut-off for the "emails today" stat. */
+function startOfUtcDayIso(now = new Date()): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  ).toISOString();
+}
+
+/**
+ * A read-only snapshot of the data layer for the owner dashboard: headline
+ * counts plus capped, newest-first slices of each table. Counts use `head`
+ * queries (no rows pulled); the tables are capped so a growing DB never balloons
+ * the page. Service-role — call only behind the owner gate.
+ */
+export async function getAdminOverview(): Promise<AdminOverview> {
+  const serverClient = createServerClient();
+  const todayIso = startOfUtcDayIso();
+
+  const [
+    usersRes,
+    subsRes,
+    prefsRes,
+    leadsRes,
+    emailsRes,
+    usersCount,
+    leadsCount,
+    emailsTotal,
+    emailsToday,
+  ] = await Promise.all([
+    serverClient
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(ADMIN_ROW_CAP),
+    serverClient.from('subscriptions').select('*'),
+    serverClient.from('user_preferences').select('*'),
+    serverClient
+      .from('trial_sends')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(ADMIN_ROW_CAP),
+    serverClient
+      .from('generated_emails')
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(ADMIN_FEED_CAP),
+    serverClient.from('users').select('*', { count: 'exact', head: true }),
+    serverClient.from('trial_sends').select('*', { count: 'exact', head: true }),
+    serverClient.from('generated_emails').select('*', { count: 'exact', head: true }),
+    serverClient
+      .from('generated_emails')
+      .select('*', { count: 'exact', head: true })
+      .gte('sent_at', todayIso),
+  ]);
+
+  const firstError =
+    usersRes.error ?? subsRes.error ?? prefsRes.error ?? leadsRes.error ?? emailsRes.error;
+  if (firstError) throw new Error(`Failed to load admin overview: ${firstError.message}`);
+
+  const subs = (subsRes.data ?? []) as Subscription[];
+  const subByUser = new Map(subs.map((s) => [s.user_id, s]));
+  const prefByUser = new Map(
+    ((prefsRes.data ?? []) as UserPreferences[]).map((p) => [p.user_id, p]),
+  );
+  const users = (usersRes.data ?? []) as User[];
+  const emailById = new Map(users.map((u) => [u.id, u.email]));
+
+  const subscribers: AdminSubscriberRow[] = users.map((user) => ({
+    user,
+    subscription: subByUser.get(user.id) ?? null,
+    preferences: prefByUser.get(user.id) ?? null,
+  }));
+
+  const recentEmails: AdminRecentEmail[] = ((emailsRes.data ?? []) as GeneratedEmail[]).map(
+    (e) => ({ ...e, email: emailById.get(e.user_id) ?? null }),
+  );
+
+  const countByStatus = (status: SubscriptionStatus) =>
+    subs.filter((s) => s.status === status).length;
+
+  return {
+    stats: {
+      users: usersCount.count ?? users.length,
+      activeSubs: countByStatus('active'),
+      trialSubs: countByStatus('trial'),
+      cancelledSubs: countByStatus('cancelled'),
+      trialLeads: leadsCount.count ?? (leadsRes.data ?? []).length,
+      emailsToday: emailsToday.count ?? 0,
+      emailsTotal: emailsTotal.count ?? 0,
+    },
+    subscribers,
+    trialLeads: (leadsRes.data ?? []) as TrialSend[],
+    recentEmails,
+  };
+}
+
+/** Everything the /admin/users/[id] detail page renders for one account. */
+export interface AdminUserDetail {
+  user: User;
+  subscription: Subscription | null;
+  preferences: UserPreferences | null;
+  /** This account's full send history, newest first (capped). */
+  emails: GeneratedEmail[];
+  /** The no-login /start lead with the same email, if one exists. */
+  lead: TrialSend | null;
+}
+
+const ADMIN_USER_EMAIL_CAP = 100;
+
+/**
+ * The full record for a single account, joined across every table that
+ * references it: subscription, preferences, send history, and any matching
+ * trial lead (by email). Returns null when the id doesn't exist. Service-role —
+ * call only behind the owner gate.
+ */
+export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail | null> {
+  const serverClient = createServerClient();
+
+  const { data: userRow, error: userErr } = await serverClient
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (userErr) throw new Error(`Failed to load user: ${userErr.message}`);
+  if (!userRow) return null;
+  const user = userRow as User;
+
+  const [subRes, prefRes, emailsRes, leadRes] = await Promise.all([
+    serverClient.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
+    serverClient.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
+    serverClient
+      .from('generated_emails')
+      .select('*')
+      .eq('user_id', userId)
+      .order('sent_at', { ascending: false })
+      .limit(ADMIN_USER_EMAIL_CAP),
+    serverClient
+      .from('trial_sends')
+      .select('*')
+      .eq('email', user.email)
+      .order('created_at', { ascending: false })
+      .limit(1),
+  ]);
+
+  const firstError = subRes.error ?? prefRes.error ?? emailsRes.error ?? leadRes.error;
+  if (firstError) throw new Error(`Failed to load user detail: ${firstError.message}`);
+
+  return {
+    user,
+    subscription: (subRes.data as Subscription | null) ?? null,
+    preferences: (prefRes.data as UserPreferences | null) ?? null,
+    emails: (emailsRes.data ?? []) as GeneratedEmail[],
+    lead: ((leadRes.data ?? [])[0] as TrialSend | undefined) ?? null,
+  };
 }
