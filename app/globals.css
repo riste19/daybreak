@@ -182,25 +182,43 @@ button:disabled,
 }
 
 @utility animate-dawn-rise {
-  animation: dawn-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dawn-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* The sun at the foot of the hero blooms: it swells up from the horizon
-   and brightens into place. Uses the standalone `scale` property so it
-   composes with Tailwind's translate utilities instead of fighting them. */
+/* LCP-safe variant for the hero headline + subcopy. Those are the Largest
+   Contentful Paint candidates, and Chrome ignores elements at opacity:0 when
+   timing LCP — so fading them in (animate-dawn-rise + a 400ms+ delay) pushes
+   LCP back by that whole interval. This rises into place WITHOUT a fade, so the
+   text paints at full opacity on the first frame (LCP is recorded immediately)
+   while still joining the staggered "first light" cascade. */
+@keyframes dawn-rise-text {
+  from {
+    transform: translateY(22px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@utility animate-dawn-rise-text {
+  animation: dawn-rise-text 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The sun at the foot of the hero brightens into place. It used to also
+   `scale`, but animating a transform on a 64px-blurred element forces the GPU
+   to re-rasterize the blur every frame — costly on mobile. Fading opacity only
+   keeps the same "first light" feel while the blurred layer is rasterized once. */
 @keyframes dawn-bloom {
   from {
     opacity: 0;
-    scale: 0.55;
   }
   to {
     opacity: 1;
-    scale: 1;
   }
 }
 
 @utility animate-dawn-bloom {
-  animation: dawn-bloom 2.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dawn-bloom 2.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* =============================================================

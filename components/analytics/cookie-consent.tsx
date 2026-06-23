@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
+import { usePostHog } from "./posthog-context";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
