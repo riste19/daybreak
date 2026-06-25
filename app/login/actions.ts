@@ -1,10 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
-
 import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { site } from "@/lib/config";
 import type { LoginState } from "./login-state";
 
 /**
@@ -36,16 +35,12 @@ export async function sendMagicLink(
     return { status: "sent", email, demo: true };
   }
 
-  const h = await headers();
-  const host = h.get("host");
-  const origin = h.get("origin") ?? (host ? `https://${host}` : undefined);
-
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
+      emailRedirectTo: `${site.url}/auth/callback`,
     },
   });
 
