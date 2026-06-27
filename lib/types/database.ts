@@ -21,6 +21,10 @@ export interface Subscription {
   trial_ends_at: string | null;
   subscription_started_at: string | null;
   subscription_ends_at: string | null;
+  /** Paddle subscription id (`sub_…`); null for pre-Paddle / mock rows. Migration 007. */
+  paddle_subscription_id: string | null;
+  /** Paddle customer id (`ctm_…`); null for pre-Paddle / mock rows. Migration 007. */
+  paddle_customer_id: string | null;
   created_at: string;
   updated_at: string;
 }

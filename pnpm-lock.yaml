@@ -26,6 +26,12 @@ importers:
       '@next/mdx':
         specifier: ^16.2.9
         version: 16.2.9(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.2.17)(react@19.2.4))
+      '@paddle/paddle-js':
+        specifier: ^1.4.2
+        version: 1.6.4
+      '@paddle/paddle-node-sdk':
+        specifier: ^3.4.0
+        version: 3.8.0
       '@radix-ui/react-label':
         specifier: ^2.1.9
         version: 2.1.9(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1088,6 +1094,13 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@paddle/paddle-js@1.6.4':
+    resolution: {integrity: sha512-ncfnS6I8mCX6krZ3Sgz2iAYivGmhdI81yt9mT6prtPj4Ipd9J3M12LCJRUFL4FB7BYeeuV04c33RSEnbZUBCaA==}
+
+  '@paddle/paddle-node-sdk@3.8.0':
+    resolution: {integrity: sha512-4RS6AhZisloYaT2jiFgx9hwm22qwLRUx4EgIVb1gS3bS96lhDBQWq8BC1/Zow2i3CuxMkehXQUc3qKSBS77ozA==}
+    engines: {node: '>=20'}
 
   '@posthog/core@1.32.3':
     resolution: {integrity: sha512-vwOEMfZvGv5XxNWV7p9I52NSmvFNMhyW2IHpIoUHW5jLkgUrknzJW1H/qxVGSIrNNVQkfsoaDFzDhJdg10pgrA==}
@@ -4762,6 +4775,10 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@paddle/paddle-js@1.6.4': {}
+
+  '@paddle/paddle-node-sdk@3.8.0': {}
 
   '@posthog/core@1.32.3':
     dependencies:

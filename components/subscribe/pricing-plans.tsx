@@ -13,6 +13,12 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  CheckoutEventNames,
+  initializePaddle,
+  type Paddle,
+} from "@paddle/paddle-js";
+
 import { cn } from "@/lib/utils";
 import {
   annualSavings,
@@ -22,6 +28,13 @@ import {
   type BillingPeriod,
   type Plan,
 } from "@/lib/pricing";
+import {
+  isPaddleConfigured,
+  paddleClientToken,
+  paddleEnvironment,
+  priceIdFor,
+} from "@/lib/billing/config";
+import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +47,9 @@ import {
 /**
  * The pricing surface: a monthly/annual toggle and the plan cards (from
  * lib/pricing.ts). The free plan sends people into onboarding; the paid plan
- * opens a MODAL checkout with a MOCK card payment (see app/subscribe/actions.ts).
+ * opens a MODAL checkout. When Paddle is configured the modal collects an email
+ * and opens Paddle's secure overlay (PaddleCheckoutPanel); otherwise it falls
+ * back to the MOCK card form (see app/subscribe/actions.ts) for local demos.
  *
  * `defaultEmail` (from the `?email=` the daily email's "Go daily" link carries)
  * pre-fills the checkout and auto-opens it, so arriving from the email drops you
@@ -249,10 +264,17 @@ function CheckoutModal({
   defaultEmail: string;
   onClose: () => void;
 }) {
+  // Real checkout runs through Paddle (the overlay below). When Paddle isn't
+  // configured (local dev without keys) we fall back to the mock server-action
+  // form so the flow still demos end-to-end.
+  const paddleReady = isPaddleConfigured();
+
   const [state, formAction, pending] = useActionState(
     createSubscriberAccount,
     initialCheckoutState,
   );
+  // Paddle path completion (the mock path uses `state.status === "success"`).
+  const [paddleDone, setPaddleDone] = React.useState(false);
 
   // Close on Escape; lock background scroll while open.
   React.useEffect(() => {
@@ -269,6 +291,13 @@ function CheckoutModal({
   }, [onClose]);
 
   const perMonth = period === "annual" ? plan.price.annual : plan.price.monthly;
+  const showSuccess = paddleReady ? paddleDone : state.status === "success";
+  const successMessage = paddleReady
+    ? `Your ${plan.name} subscription is on its way. Your trial starts now — ` +
+      `we'll only charge the card you entered when it ends, and you can cancel anytime.`
+    : state.status === "success"
+      ? state.message
+      : "";
 
   return (
     <div
@@ -292,8 +321,16 @@ function CheckoutModal({
           <X className="size-4" />
         </button>
 
-        {state.status === "success" ? (
-          <SuccessPanel message={state.message} onClose={onClose} />
+        {showSuccess ? (
+          <SuccessPanel message={successMessage} onClose={onClose} />
+        ) : paddleReady ? (
+          <PaddleCheckoutPanel
+            plan={plan}
+            period={period}
+            perMonth={perMonth}
+            defaultEmail={defaultEmail}
+            onCompleted={() => setPaddleDone(true)}
+          />
         ) : (
           <CheckoutForm
             plan={plan}
@@ -306,6 +343,157 @@ function CheckoutModal({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The real checkout: collect the email (so we can pre-fill + stamp it into the
+ * subscription's customData for reliable provisioning) then open Paddle's hosted
+ * overlay. Paddle takes the card, starts the trial, and — on `checkout.completed`
+ * — fires our callback; the actual account is created server-side by the Paddle
+ * webhook (app/api/webhooks/paddle/route.ts), so it survives a closed tab.
+ */
+function PaddleCheckoutPanel({
+  plan,
+  period,
+  perMonth,
+  defaultEmail,
+  onCompleted,
+}: {
+  plan: Plan;
+  period: BillingPeriod;
+  perMonth: number;
+  defaultEmail: string;
+  onCompleted: () => void;
+}) {
+  const [email, setEmail] = React.useState(defaultEmail);
+  const [error, setError] = React.useState<string | null>(null);
+  const [opening, setOpening] = React.useState(false);
+
+  const paddleRef = React.useRef<Paddle | null>(null);
+  // Keep the latest completion handler without re-initializing Paddle.
+  const onCompletedRef = React.useRef(onCompleted);
+  React.useEffect(() => {
+    onCompletedRef.current = onCompleted;
+  }, [onCompleted]);
+
+  React.useEffect(() => {
+    let active = true;
+    initializePaddle({
+      environment: paddleEnvironment,
+      token: paddleClientToken,
+      eventCallback: (event) => {
+        if (event.name === CheckoutEventNames.CHECKOUT_COMPLETED) {
+          onCompletedRef.current();
+        }
+      },
+    })
+      .then((instance) => {
+        if (active && instance) paddleRef.current = instance;
+      })
+      .catch((err) => {
+        console.error("[paddle] failed to initialize", err);
+        if (active) setError("Checkout couldn't load. Please refresh and try again.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const priceId = priceIdFor(plan.id, period);
+
+  function openCheckout() {
+    setError(null);
+    const cleaned = normalizeEmail(email);
+    if (!isValidEmail(cleaned)) {
+      setError("That email doesn't look quite right.");
+      return;
+    }
+    const paddle = paddleRef.current;
+    if (!paddle || !priceId) {
+      setError("Checkout isn't available right now. Please try again in a moment.");
+      return;
+    }
+    setOpening(true);
+    paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      customer: { email: cleaned },
+      customData: { email: cleaned, plan: plan.id, period },
+      settings: { displayMode: "overlay", theme: "light" },
+    });
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">
+        Subscribing to
+      </p>
+      <div className="mt-1 flex items-start justify-between gap-4">
+        <h3 id="checkout-title" className="font-display text-xl font-medium text-ink">
+          {plan.name}
+        </h3>
+        <p className="shrink-0 text-right text-sm text-ink-soft">
+          <span className="font-display text-2xl font-medium text-ink">
+            {CURRENCY}
+            {perMonth}
+          </span>
+          <br />/ month, billed {period === "annual" ? "yearly" : "monthly"}
+        </p>
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+
+      <div className="mt-5">
+        <Field id="checkout-email" label="Where should your mornings land?">
+          <Input
+            id="checkout-email"
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+      </div>
+
+      <Button
+        type="button"
+        size="lg"
+        variant="glow"
+        className="mt-6 w-full"
+        onClick={openCheckout}
+        disabled={opening}
+      >
+        {opening ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Opening secure checkout…
+          </>
+        ) : (
+          <>
+            <Lock className="size-4" aria-hidden />
+            Continue to secure checkout
+          </>
+        )}
+      </Button>
+
+      <p className="mt-4 flex items-start gap-1.5 text-xs text-ink-soft">
+        <CreditCard className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+        <span>
+          Payments are handled securely by Paddle. Your trial starts now — we only
+          charge when it ends, and you can cancel anytime.
+        </span>
+      </p>
     </div>
   );
 }
@@ -467,9 +655,9 @@ function CheckoutForm({
       <p className="mt-4 flex items-start gap-1.5 text-xs text-ink-soft">
         <CreditCard className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
         <span>
-          Mock payment, no real charge. Test card{" "}
+          Mock payment, no real charge (Paddle isn&apos;t configured). Test card{" "}
           <span className="font-medium text-ink">4242 4242 4242 4242</span>, any future
-          date, any CVC. Your 7-day trial starts now.
+          date, any CVC. Your 3-day trial starts now.
         </span>
       </p>
     </form>

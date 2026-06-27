@@ -743,6 +743,76 @@ export async function cancelSubscriptionByEmail(email: string): Promise<boolean>
 }
 
 // ============================================================================
+// PADDLE BILLING (service role) — the Paddle webhook is the ONLY writer here.
+// Paddle owns the card, the trial, the trial→paid auto-charge, and dunning; this
+// mirrors the subscription lifecycle into our row so the daily cron emails the
+// right people. See app/api/webhooks/paddle/route.ts + lib/billing/.
+// ============================================================================
+
+/** A Paddle subscription event, normalized to what our DB needs. */
+export type PaddleSubscriptionSync = {
+  email: string;
+  plan: string;
+  status: SubscriptionStatus;
+  paddleSubscriptionId: string;
+  paddleCustomerId: string | null;
+  /** Paddle's current-period end — used as trial_ends_at while trialing. */
+  trialEndsAt: string | null;
+  /** Paddle's current-period end — recorded as the cancel/cease date. */
+  currentPeriodEnd: string | null;
+};
+
+/**
+ * Apply a Paddle subscription event to our DB (idempotent). Ensures the account
+ * exists (provisioning a brand-new buyer, seeding prefs from any prior trial
+ * lead), then upserts the subscription row to match Paddle's status + ids.
+ */
+export async function syncPaddleSubscription(
+  input: PaddleSubscriptionSync,
+): Promise<void> {
+  const admin = createServerClient();
+  const email = input.email.trim().toLowerCase();
+
+  // New buyer → provision (creates auth user + rows). Returning buyer → reuse.
+  let user = await getUserByEmail(email);
+  if (!user) {
+    user = (await provisionSubscriber({ email, plan: input.plan })).user;
+  }
+
+  // Preserve the original "first went paid" timestamp across renewals.
+  const { data: existing } = await admin
+    .from('subscriptions')
+    .select('subscription_started_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  const update: Database['public']['Tables']['subscriptions']['Update'] = {
+    status: input.status,
+    plan: input.plan,
+    paddle_subscription_id: input.paddleSubscriptionId,
+    paddle_customer_id: input.paddleCustomerId,
+    updated_at: now,
+  };
+
+  if (input.status === 'trial') {
+    update.trial_ends_at = input.trialEndsAt;
+    update.subscription_ends_at = null;
+  } else if (input.status === 'active') {
+    update.subscription_started_at = existing?.subscription_started_at ?? now;
+    update.subscription_ends_at = null;
+  } else if (input.status === 'cancelled') {
+    update.subscription_ends_at = input.currentPeriodEnd ?? now;
+  }
+
+  const { error } = await admin
+    .from('subscriptions')
+    .update(update)
+    .eq('user_id', user.id);
+  if (error) throw new Error(`Failed to sync Paddle subscription: ${error.message}`);
+}
+
+// ============================================================================
 // ADMIN OVERVIEW (service role) — read-only DB snapshot for the owner-gated
 // /admin dashboard. Bypasses RLS so it sees every row; never reachable by a
 // non-owner (the route gates on lib/admin.ts:isOwnerEmail before calling this).

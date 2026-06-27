@@ -40,6 +40,8 @@ export type Database = {
           trial_ends_at: string | null;
           subscription_started_at: string | null;
           subscription_ends_at: string | null;
+          paddle_subscription_id: string | null;
+          paddle_customer_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -52,6 +54,8 @@ export type Database = {
           trial_ends_at?: string | null;
           subscription_started_at?: string | null;
           subscription_ends_at?: string | null;
+          paddle_subscription_id?: string | null;
+          paddle_customer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -64,6 +68,8 @@ export type Database = {
           trial_ends_at?: string | null;
           subscription_started_at?: string | null;
           subscription_ends_at?: string | null;
+          paddle_subscription_id?: string | null;
+          paddle_customer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
