@@ -7,6 +7,7 @@ import { usePostHog } from "@/components/analytics/posthog-context";
 import { Button } from "@/components/ui/button";
 import { toOutputPlan, type EmailLayout } from "@/lib/email/layout";
 import type { GenerationInput } from "@/lib/onboarding/buildGenerationInput";
+import { wakeEngine } from "@/lib/wake-engine";
 
 interface ReviewSendProps {
   /** The request body built from onboarding answers. */
@@ -21,6 +22,11 @@ interface ReviewSendProps {
 
 type Phase = "idle" | "sending" | "sent" | "error";
 
+// The button's in-flight label, escalating with time. A send usually takes a
+// few seconds, but up to a minute when the engine is waking from sleep.
+const SENDING_LABELS = ["Writing your email…", "Still writing…", "Almost there…"];
+const SLOW_AFTER_MS = [8_000, 25_000];
+
 /**
  * The product (non-owner) review screen. A calm confirm-then-send: it delivers
  * the sample email via /api/send and shows a friendly result — no prompt editor,
@@ -28,9 +34,23 @@ type Phase = "idle" | "sending" | "sent" | "error";
  */
 export function ReviewSend({ input, emailLayout, to, onBackToEdit }: ReviewSendProps) {
   const [phase, setPhase] = React.useState<Phase>("idle");
+  const [slowness, setSlowness] = React.useState(0);
   const posthog = usePostHog();
 
+  // Re-wake on arrival, in case the visitor lingered on the earlier screens
+  // long enough for the engine to fall back asleep.
+  React.useEffect(() => {
+    wakeEngine();
+  }, []);
+
+  React.useEffect(() => {
+    if (phase !== "sending") return;
+    const timers = SLOW_AFTER_MS.map((ms, i) => setTimeout(() => setSlowness(i + 1), ms));
+    return () => timers.forEach(clearTimeout);
+  }, [phase]);
+
   const send = async () => {
+    setSlowness(0);
     setPhase("sending");
     // Same deliver body as the debug screen, minus any systemPromptOverride —
     // the engine uses its default prompt and generates a fresh email.
@@ -110,8 +130,13 @@ export function ReviewSend({ input, emailLayout, to, onBackToEdit }: ReviewSendP
           disabled={phase === "sending"}
         >
           <Mail className="size-4" />
-          {phase === "sending" ? "Sending…" : `Email it to ${to}`}
+          {phase === "sending" ? SENDING_LABELS[slowness] : `Email it to ${to}`}
         </Button>
+        {phase === "sending" && slowness > 0 && (
+          <p className="text-sm text-ink-soft" role="status">
+            The first email after a quiet spell can take up to a minute.
+          </p>
+        )}
         <Button variant="ghost" onClick={onBackToEdit} disabled={phase === "sending"}>
           <ArrowLeft className="size-4" />
           Back to edit
