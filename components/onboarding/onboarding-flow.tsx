@@ -12,6 +12,7 @@ import { resolveAnswers, type AnswerValue } from "@/lib/onboarding/resolveAnswer
 import { buildGenerationInput, type GenerationInput } from "@/lib/onboarding/buildGenerationInput";
 import { DEFAULT_LAYOUT, type EmailLayout } from "@/lib/email/layout";
 import { isValidEmail } from "@/lib/validation";
+import { wakeEngine } from "@/lib/wake-engine";
 import { captureTrialLead } from "@/app/start/actions";
 import { Button } from "@/components/ui/button";
 import { CategoryGrid } from "./category-grid";
@@ -54,6 +55,12 @@ export function OnboardingFlow({ isOwner = false }: { isOwner?: boolean }) {
     viewed.current = true;
     posthog?.capture("start_viewed");
   }, [posthog]);
+
+  // Wake the engine (it sleeps when idle and takes ~50 s to wake) while the
+  // visitor answers, so the final send isn't stuck behind a cold start.
+  React.useEffect(() => {
+    wakeEngine();
+  }, []);
 
   // Keep selected categories in schema order so steps + dots are predictable.
   const toggleCategory = (id: string) => {
