@@ -82,3 +82,8 @@ GitHub Actions runs the typecheck, the engine build and the tests on every pull 
 - [`COSTS.md`](COSTS.md): running costs
 - [`api/README.md`](api/README.md): engine endpoints and environment variables
 - [`supabase/README.md`](supabase/README.md): database schema and migrations
+
+## Author
+
+Built by [Riste Semenkovski](https://github.com/riste19). Commits from the
+`altaira-imbrium-tech` account are also mine; it is my second GitHub account.
